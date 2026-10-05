@@ -24,6 +24,8 @@ El sistema de OficioYa debe tener:
 para todos los usuarios (excepto para el administrador)
 2. El administrador tiene acceso a la información completa (incluso las ocultas) de un usuario
 3. Las acciones hechas por el administrador deben quedar registradas
+4. Cobertura de pruebas unitarios de mínimo del 80%
+5. El sistema debe registrar logs de cada generación y exportación de reporte
 
 ## 2. Diagramas de caso de uso
 
