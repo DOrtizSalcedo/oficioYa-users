@@ -13,7 +13,9 @@ El sistema de OficioYa debe tener la capacidad de:
 3. Consultar su propio perfil con la información registrada en la plataforma
 4. Editar ciertas secciones principales del perfil (excepto las que están ocultas)
 5. Consultar el perfil de otro usuario, mostrando información básica de acuerdo al tipo de rol
-6. El administrador puede desactivar o reactivar una cuenta por si sucede algún conflicto o mal uso de los servicios que ofrece la página web
+6. El administrador puede desactivar una cuenta si sucede algún conflicto o mal uso de los servicios que ofrece la página web
+7. El administrador es capaz de reactivar una cuenta cuando el estado de la cuenta de un usuario esté inactivo
+8. El administrador consulta el perfil de una cuenta 
 
 ### 1.2 Requerimientos no funcionales
 
@@ -93,16 +95,16 @@ El sistema de OficioYa debe tener:
 
 ### 2.6 Requerimiento Funcional 6
 
-| Campo                        | Descripción                                                                                                                                                                                                                |
-|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **ID**                       | RF-06                                                                                                                                                                                                                      |
-| **Nombre del requerimiento** | Desactivar una cuenta.                                                                                                                                                                                                     |
-| **Descripción**              | *El sistema debe permitir que el administrador desactive una cuenta por conflicto o mal uso de la plataforma.*                                                                                                             |
-| **Precondiciones**           | *El administrador está autenticado. La cuenta seleccionada existe y está Activa*                                                                                                                                           |
-| **Actor**                    | *Administrador*                                                                                                                                                                                                            |
+| Campo                        | Descripción                                                                                                                                                                                                         |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **ID**                       | RF-06                                                                                                                                                                                                               |
+| **Nombre del requerimiento** | Desactivar una cuenta.                                                                                                                                                                                              |
+| **Descripción**              | *El sistema debe permitir que el administrador desactive una cuenta por conflicto o mal uso de la plataforma.*                                                                                                      |
+| **Precondiciones**           | *El administrador está autenticado. La cuenta seleccionada existe y está Activa*                                                                                                                                    |
+| **Actor**                    | *Administrador*                                                                                                                                                                                                     |
 | **Flujo principal**          | 1. El administrador selecciona la cuenta<br/>2. El administrador solicita desactivarla<br/>3. El administrador ingresa el motivo (obligatorio)<br/>4. El sistema cambia el estado de la cuenta a Inactiva<br/>5. El sistema registra la acción (RNF-02) |
-| **Diagrama de caso de uso**  | ![Diagrama RF-06](../uml/enable_disable_user_admin.png)                                                                                                                                                                    |
-| **Poscondiciones**           | La cuenta está en estado Inactiva y existe un registro de la acción con su motivo                                                                                                                                          |
+| **Diagrama de caso de uso**  | ![Diagrama RF-06](../uml/disable_user_admin.png)                                                                                                                                                                    |
+| **Poscondiciones**           | La cuenta está en estado Inactiva y existe un registro de la acción con su motivo                                                                                                                                   |
 
 ### 2.7 Requerimiento Funcional 7
 
