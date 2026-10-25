@@ -89,7 +89,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- MapStruct (opcional/mapeo de DTOs) -->
+		<!-- MapStruct (mapeo de DTOs) -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
 			<artifactId>mapstruct</artifactId>
