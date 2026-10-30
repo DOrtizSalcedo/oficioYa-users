@@ -9,17 +9,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-/**
- * Endpoints exclusivos del administrador.
- * TODO (seguridad): restringir a ROLE_ADMIN y tomar el id del admin desde el JWT.
- */
+/** Endpoints exclusivos del administrador. El id del admin se toma del JWT. */
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
@@ -35,14 +35,14 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<AdminUserDTO> deactivate(@RequestHeader(UserController.USER_ID_HEADER) UUID adminId,
+    public ResponseEntity<AdminUserDTO> deactivate(@AuthenticationPrincipal UUID adminId,
                                                    @PathVariable UUID id,
                                                    @Valid @RequestBody StatusChangeDTO request) {
         return ResponseEntity.ok(adminUserService.deactivate(adminId, id, request.getReason()));
     }
 
     @PatchMapping("/{id}/activate")
-    public ResponseEntity<AdminUserDTO> activate(@RequestHeader(UserController.USER_ID_HEADER) UUID adminId,
+    public ResponseEntity<AdminUserDTO> activate(@AuthenticationPrincipal UUID adminId,
                                                  @PathVariable UUID id,
                                                  @Valid @RequestBody StatusChangeDTO request) {
         return ResponseEntity.ok(adminUserService.activate(adminId, id, request.getReason()));

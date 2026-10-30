@@ -10,20 +10,19 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 /**
  * Endpoints del usuario autenticado y perfiles públicos.
- * TODO (seguridad): reemplazar el header X-User-Id por el id que viene en el JWT.
+ * El id del usuario se toma del JWT (subject), nunca del cliente.
  */
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
-
-    static final String USER_ID_HEADER = "X-User-Id";
 
     private final UserService userService;
 
@@ -33,18 +32,18 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<OwnProfileDTO> getOwnProfile(@RequestHeader(USER_ID_HEADER) UUID userId) {
+    public ResponseEntity<OwnProfileDTO> getOwnProfile(@AuthenticationPrincipal UUID userId) {
         return ResponseEntity.ok(userService.getOwnProfile(userId));
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<OwnProfileDTO> updateOwnProfile(@RequestHeader(USER_ID_HEADER) UUID userId,
+    public ResponseEntity<OwnProfileDTO> updateOwnProfile(@AuthenticationPrincipal UUID userId,
                                                           @Valid @RequestBody UserUpdateDTO request) {
         return ResponseEntity.ok(userService.updateOwnProfile(userId, request));
     }
 
     @PostMapping("/me/roles")
-    public ResponseEntity<OwnProfileDTO> addRole(@RequestHeader(USER_ID_HEADER) UUID userId,
+    public ResponseEntity<OwnProfileDTO> addRole(@AuthenticationPrincipal UUID userId,
                                                  @Valid @RequestBody AddRoleDTO request) {
         return ResponseEntity.ok(userService.addRole(userId, request.getRole()));
     }
