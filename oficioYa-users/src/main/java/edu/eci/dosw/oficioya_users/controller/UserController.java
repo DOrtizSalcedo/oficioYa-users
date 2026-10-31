@@ -15,10 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Endpoints del microservicio. El id del usuario autenticado sale del JWT (@AuthenticationPrincipal).
- * Las rutas /api/admin/** solo son accesibles con rol ADMIN (ver SecurityConfig).
- */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor

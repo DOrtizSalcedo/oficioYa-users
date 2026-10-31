@@ -20,11 +20,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Valida el JWT emitido por Identity (HS256) en el header Authorization: Bearer <token>.
- * El subject (sub) es el UUID del usuario y el claim de roles trae TRABAJADOR, CONTRATANTE o ADMIN.
- * Si el token falta o es inválido no se autentica y Spring Security responde 401.
- */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final SecretKey key;
@@ -56,7 +51,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** Acepta el claim como lista ["ADMIN"] o como texto "ADMIN". */
     private List<String> roles(Object value) {
         if (value instanceof Collection<?> collection) {
             return collection.stream().map(String::valueOf).toList();

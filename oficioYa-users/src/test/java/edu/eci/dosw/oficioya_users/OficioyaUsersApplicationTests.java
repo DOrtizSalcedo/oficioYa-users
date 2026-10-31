@@ -8,7 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Levanta la aplicación completa con H2 y verifica que se creen los roles. */
 @SpringBootTest
 class OficioyaUsersApplicationTests {
 

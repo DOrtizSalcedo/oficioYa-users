@@ -18,7 +18,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Verifica el mapeo de las tablas del MER y las consultas de los repositorios. */
 @DataJpaTest
 class UserRepositoryTest {
 

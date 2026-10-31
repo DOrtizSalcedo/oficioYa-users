@@ -9,10 +9,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Respuesta de usuario. Según quién consulta se llenan distintos campos (los nulos no se envían):
- * perfil público (RF-05), perfil propio con correo y teléfonos enmascarados (RF-03) o vista admin (RF-08).
- */
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserResponseDTO {

@@ -69,8 +69,6 @@ class UserControllerTest {
         return dto;
     }
 
-    // ---------- seguridad ----------
-
     @Test
     void registerIsPublic() throws Exception {
         when(userService.register(any(UserRequestDTO.class))).thenReturn(response("Ana"));
@@ -111,8 +109,6 @@ class UserControllerTest {
                 .andExpect(status().isForbidden());
         verifyNoInteractions(userService);
     }
-
-    // ---------- usuario ----------
 
     @Test
     void registerWithInvalidDataReturns400() throws Exception {
@@ -158,8 +154,6 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Luis"));
     }
-
-    // ---------- administrador ----------
 
     @Test
     void adminListsAndSeesUsers() throws Exception {

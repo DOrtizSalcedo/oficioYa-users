@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Convierte entre entidades y DTOs. Aplica el ocultamiento de correo y teléfono (RNF-01). */
 @Component
 public class UserMapper {
 
@@ -23,7 +22,7 @@ public class UserMapper {
         }).toList();
     }
 
-    /** RF-05: solo datos básicos, sin correo ni teléfonos. */
+    /** RF-05 */
     public UserResponseDTO toPublic(User user) {
         UserResponseDTO dto = new UserResponseDTO();
         dto.setId(user.getId());
@@ -32,7 +31,7 @@ public class UserMapper {
         return dto;
     }
 
-    /** RF-03: perfil propio con correo y teléfonos ocultos de forma parcial. */
+    /** RF-03 */
     public UserResponseDTO toOwn(User user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(maskEmail(user.getEmail()));
@@ -42,7 +41,7 @@ public class UserMapper {
         return dto;
     }
 
-    /** RF-08: el administrador ve todos los datos. */
+    /** RF-08 */
     public UserResponseDTO toAdmin(User user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(user.getEmail());
@@ -60,12 +59,10 @@ public class UserMapper {
         return dto;
     }
 
-    /** juan@gmail.com -> *****@gmail.com */
     static String maskEmail(String email) {
         return "*****" + email.substring(email.indexOf('@'));
     }
 
-    /** 3001234567 -> ******4567 */
     static String maskPhone(String number) {
         int visible = Math.min(4, number.length());
         return "*".repeat(number.length() - visible) + number.substring(number.length() - visible);

@@ -52,8 +52,6 @@ class UserServiceTest {
         userService = new UserService(userRepository, roleRepository, new UserMapper());
     }
 
-    // ---------- datos de prueba ----------
-
     private static Role role(String name) {
         Role role = new Role();
         role.setId(UUID.randomUUID());
@@ -104,9 +102,7 @@ class UserServiceTest {
         assertThatThrownBy(action::run).isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode()).isEqualTo(status);
     }
-
-    // ---------- RF-01 registro ----------
-
+    
     @Test
     void registerCreatesActiveAccountWithMaskedData() {
         when(userRepository.existsByEmail("ana@mail.com")).thenReturn(false);
@@ -164,8 +160,6 @@ class UserServiceTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    // ---------- RF-03 y RF-04 perfil propio ----------
-
     @Test
     void getOwnProfileReturnsMaskedData() {
         User user = user(AccountStatus.ACTIVE, "CONTRATANTE");
@@ -214,8 +208,6 @@ class UserServiceTest {
         assertThat(userService.updateOwnProfile(user.getId(), new UserUpdateDTO()).getName()).isEqualTo("Ana Pérez");
     }
 
-    // ---------- RF-02 segundo rol ----------
-
     @Test
     void addRoleAddsMissingRole() {
         User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
@@ -240,8 +232,6 @@ class UserServiceTest {
         assertStatus(() -> userService.addRole(UUID.randomUUID(), RoleName.ADMIN), HttpStatus.FORBIDDEN);
     }
 
-    // ---------- RF-05 perfil público ----------
-
     @Test
     void getPublicProfileHidesContactData() {
         User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
@@ -261,8 +251,6 @@ class UserServiceTest {
 
         assertStatus(() -> userService.getPublicProfile(id), HttpStatus.NOT_FOUND);
     }
-
-    // ---------- RF-06, RF-07, RF-08 administrador ----------
 
     @Test
     void adminSeesFullData() {

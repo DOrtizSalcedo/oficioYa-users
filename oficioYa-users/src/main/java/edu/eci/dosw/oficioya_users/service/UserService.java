@@ -33,9 +33,6 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
 
-    // ---------- Usuario ----------
-
-    /** RF-01: registro con rol TRABAJADOR y/o CONTRATANTE. */
     public UserResponseDTO register(UserRequestDTO request) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmail(email)) {
@@ -76,7 +73,7 @@ public class UserService {
         return userMapper.toOwn(userRepository.save(user));
     }
 
-    /** RF-02: agrega el rol faltante a la misma cuenta. */
+    /** RF-02 */
     public UserResponseDTO addRole(UUID userId, RoleName roleName) {
         checkNotAdmin(roleName);
         User user = getActiveUser(userId);
@@ -96,8 +93,6 @@ public class UserService {
                 .orElseThrow(() -> notFound(id));
     }
 
-    // ---------- Administrador ----------
-
     @Transactional(readOnly = true)
     public List<UserResponseDTO> findAll() {
         return userRepository.findAll().stream().map(userMapper::toAdmin).toList();
@@ -109,7 +104,7 @@ public class UserService {
         return userMapper.toAdmin(userRepository.findById(id).orElseThrow(() -> notFound(id)));
     }
 
-    /** RF-06, RF-07: cambia el estado y registra la acción con su motivo (RNF-03). */
+    /** RF-06, RF-07 */
     public UserResponseDTO changeStatus(UUID adminId, UUID userId, AccountStatus status, String reason) {
         if (reason == null || reason.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El motivo es obligatorio");
@@ -125,8 +120,6 @@ public class UserService {
         log.info("Admin {} cambió la cuenta {} a {}. Motivo: {}", adminId, userId, status, reason.trim());
         return userMapper.toAdmin(userRepository.save(user));
     }
-
-    // ---------- Auxiliares ----------
 
     private User getActiveUser(UUID id) {
         User user = userRepository.findById(id).orElseThrow(() -> notFound(id));
@@ -147,7 +140,6 @@ public class UserService {
                 .orElseThrow(() -> new IllegalStateException("Rol no configurado: " + roleName));
     }
 
-    /** Exactamente un teléfono principal y sin números repetidos. */
     private void validatePhones(List<PhoneDTO> phones) {
         if (phones.stream().filter(PhoneDTO::isPrincipal).count() != 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe haber exactamente un teléfono principal");
