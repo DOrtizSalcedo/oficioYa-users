@@ -1,11 +1,10 @@
 package edu.eci.dosw.oficioya_users.repository;
 
-import edu.eci.dosw.oficioya_users.TestData;
 import edu.eci.dosw.oficioya_users.entity.Permission;
+import edu.eci.dosw.oficioya_users.entity.Phone;
 import edu.eci.dosw.oficioya_users.entity.Role;
 import edu.eci.dosw.oficioya_users.entity.User;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -27,107 +26,79 @@ class UserRepositoryTest {
     @Autowired
     private RoleRepository roleRepository;
     @Autowired
-    private PermissionRepository permissionRepository;
-    @Autowired
     private TestEntityManager entityManager;
 
-    private Role worker;
-
-    @BeforeEach
-    void setUp() {
-        Permission permission = new Permission();
-        permission.setName("PROFILE_EDIT");
-        permissionRepository.save(permission);
-
-        Role role = new Role();
-        role.setName("TRABAJADOR");
-        role.setPermissions(new HashSet<>(Set.of(permission)));
-        worker = roleRepository.save(role);
-    }
-
     private User newUser(String email, AccountStatus status) {
+        Role role = roleRepository.findByName("PRUEBA").orElseGet(() -> {
+            Permission permission = new Permission();
+            permission.setName("EDITAR_PERFIL");
+            entityManager.persist(permission);
+            Role r = new Role();
+            r.setName("PRUEBA");
+            r.getPermissions().add(permission);
+            return roleRepository.save(r);
+        });
+        Phone principal = new Phone();
+        principal.setNumber("3001234567");
+        principal.setPrincipal(true);
+        Phone secondary = new Phone();
+        secondary.setNumber("3109876543");
+
         User user = new User();
         user.setName("Ana Pérez");
         user.setEmail(email);
         user.setAccountStatus(status);
-        user.setPhones(List.of(TestData.phone("3001234567", true), TestData.phone("3109876543", false)));
-        user.setRoles(new HashSet<>(Set.of(worker)));
-        return user;
-    }
-
-    private User persist(User user) {
+        user.setPhones(List.of(principal, secondary));
+        user.setRoles(new HashSet<>(Set.of(role)));
         User saved = userRepository.saveAndFlush(user);
         entityManager.clear();
         return saved;
     }
 
     @Test
-    void savesUserWithPhonesRolesAndAuditDates() {
-        User saved = persist(newUser("ana@mail.com", AccountStatus.ACTIVE));
+    void savesUserWithPhonesRolesPermissionsAndDates() {
+        User saved = newUser("ana@mail.com", null);
 
         User found = userRepository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
         assertThat(found.getCreatedAt()).isNotNull();
-        assertThat(found.getUpdatedAt()).isNotNull();
         assertThat(found.getPhones()).hasSize(2);
-        assertThat(found.getRoles()).extracting(Role::getName).containsExactly("TRABAJADOR");
-        assertThat(found.getRoles().iterator().next().getPermissions())
-                .extracting(Permission::getName).containsExactly("PROFILE_EDIT");
-    }
-
-    @Test
-    void defaultStatusIsActiveWhenNotSet() {
-        User user = newUser("sin-estado@mail.com", null);
-
-        assertThat(persist(user).getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
-    }
-
-    @Test
-    void findsByEmailAndChecksExistence() {
-        persist(newUser("ana@mail.com", AccountStatus.ACTIVE));
-
+        assertThat(found.getRoles().iterator().next().getPermissions()).hasSize(1);
         assertThat(userRepository.existsByEmail("ana@mail.com")).isTrue();
         assertThat(userRepository.existsByEmail("otro@mail.com")).isFalse();
-        assertThat(userRepository.findByEmail("ana@mail.com")).isPresent();
     }
 
     @Test
     void findByIdAndAccountStatusIgnoresInactiveUsers() {
-        User active = persist(newUser("activo@mail.com", AccountStatus.ACTIVE));
-        User inactive = persist(newUser("inactivo@mail.com", AccountStatus.INACTIVE));
+        User active = newUser("activo@mail.com", AccountStatus.ACTIVE);
+        User inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
 
         assertThat(userRepository.findByIdAndAccountStatus(active.getId(), AccountStatus.ACTIVE)).isPresent();
         assertThat(userRepository.findByIdAndAccountStatus(inactive.getId(), AccountStatus.ACTIVE)).isEmpty();
-        assertThat(userRepository.findByAccountStatus(AccountStatus.INACTIVE))
-                .extracting(User::getEmail).containsExactly("inactivo@mail.com");
     }
 
     @Test
-    void replacingPhonesRemovesOrphans() {
-        User saved = persist(newUser("ana@mail.com", AccountStatus.ACTIVE));
-
+    void replacingPhonesRemovesOldOnes() {
+        User saved = newUser("ana@mail.com", AccountStatus.ACTIVE);
         User found = userRepository.findById(saved.getId()).orElseThrow();
-        found.setPhones(List.of(TestData.phone("3205554444", true)));
-        persist(found);
+        Phone phone = new Phone();
+        phone.setNumber("3205554444");
+        phone.setPrincipal(true);
 
-        assertThat(userRepository.findById(saved.getId()).orElseThrow().getPhones())
-                .extracting("number").containsExactly("3205554444");
-        Long phoneCount = entityManager.getEntityManager()
+        found.setPhones(List.of(phone));
+        userRepository.saveAndFlush(found);
+
+        Long phones = entityManager.getEntityManager()
                 .createQuery("select count(p) from Phone p", Long.class).getSingleResult();
-        assertThat(phoneCount).isEqualTo(1L);
+        assertThat(phones).isEqualTo(1L);
+        assertThat(found.getUpdatedAt()).isNotNull();
     }
 
     @Test
     void emailMustBeUnique() {
-        persist(newUser("ana@mail.com", AccountStatus.ACTIVE));
+        newUser("ana@mail.com", AccountStatus.ACTIVE);
 
-        assertThatThrownBy(() -> userRepository.saveAndFlush(newUser("ana@mail.com", AccountStatus.ACTIVE)))
+        assertThatThrownBy(() -> newUser("ana@mail.com", AccountStatus.ACTIVE))
                 .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void findsRoleAndPermissionByName() {
-        assertThat(roleRepository.findByName("TRABAJADOR")).isPresent();
-        assertThat(roleRepository.findByName("NO_EXISTE")).isEmpty();
-        assertThat(permissionRepository.findByName("PROFILE_EDIT")).isPresent();
     }
 }

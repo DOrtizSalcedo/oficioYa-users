@@ -1,50 +1,60 @@
 package edu.eci.dosw.oficioya_users.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import javax.crypto.SecretKey;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
-/**
- * Lee el header Authorization: Bearer <token>, lo valida y deja en el SecurityContext
- * una autenticación cuyo principal es el UUID del usuario.
- * Si el token falta o es inválido no se autentica y Spring Security responde 401.
- */
-@Slf4j
-@Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER_PREFIX = "Bearer ";
+    private final SecretKey key;
+    private final String rolesClaim;
 
-    private final JwtService jwtService;
+    public JwtAuthenticationFilter(String secret, String rolesClaim) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.rolesClaim = rolesClaim;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
+        if (header != null && header.startsWith("Bearer ")) {
             try {
-                Claims claims = jwtService.parse(header.substring(BEARER_PREFIX.length()));
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        jwtService.getUserId(claims), null, jwtService.getAuthorities(claims));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } catch (JwtException | IllegalArgumentException e) {
-                log.warn("Token rechazado en {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
+                Claims claims = Jwts.parser().verifyWith(key).build()
+                        .parseSignedClaims(header.substring(7)).getPayload();
+                UUID userId = UUID.fromString(claims.getSubject());
+                List<SimpleGrantedAuthority> authorities = roles(claims.get(rolesClaim)).stream()
+                        .map(role -> new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                        .toList();
+                SecurityContextHolder.getContext()
+                        .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, authorities));
+            } catch (RuntimeException e) {
                 SecurityContextHolder.clearContext();
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private List<String> roles(Object value) {
+        if (value instanceof Collection<?> collection) {
+            return collection.stream().map(String::valueOf).toList();
+        }
+        return value instanceof String role ? List.of(role) : List.of();
     }
 }

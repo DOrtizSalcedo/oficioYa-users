@@ -60,7 +60,6 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
-    /** Reemplaza los teléfonos manteniendo sincronizada la relación bidireccional. */
     public void setPhones(List<Phone> newPhones) {
         phones.clear();
         if (newPhones != null) {
