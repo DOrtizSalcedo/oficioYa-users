@@ -1,55 +1,77 @@
 package edu.eci.dosw.oficioya_users.controller;
 
-import edu.eci.dosw.oficioya_users.dto.AddRoleDTO;
-import edu.eci.dosw.oficioya_users.dto.OwnProfileDTO;
-import edu.eci.dosw.oficioya_users.dto.PublicProfileDTO;
 import edu.eci.dosw.oficioya_users.dto.UserRequestDTO;
+import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
 import edu.eci.dosw.oficioya_users.dto.UserUpdateDTO;
+import edu.eci.dosw.oficioya_users.enums.AccountStatus;
+import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Endpoints del usuario autenticado y perfiles públicos.
- * El id del usuario se toma del JWT (subject), nunca del cliente.
+ * Endpoints del microservicio. El id del usuario autenticado sale del JWT (@AuthenticationPrincipal).
+ * Las rutas /api/admin/** solo son accesibles con rol ADMIN (ver SecurityConfig).
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<OwnProfileDTO> register(@Valid @RequestBody UserRequestDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(request));
+    @PostMapping("/users")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponseDTO register(@Valid @RequestBody UserRequestDTO request) {
+        return userService.register(request);
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<OwnProfileDTO> getOwnProfile(@AuthenticationPrincipal UUID userId) {
-        return ResponseEntity.ok(userService.getOwnProfile(userId));
+    @GetMapping("/users/me")
+    public UserResponseDTO getOwnProfile(@AuthenticationPrincipal UUID userId) {
+        return userService.getOwnProfile(userId);
     }
 
-    @PatchMapping("/me")
-    public ResponseEntity<OwnProfileDTO> updateOwnProfile(@AuthenticationPrincipal UUID userId,
-                                                          @Valid @RequestBody UserUpdateDTO request) {
-        return ResponseEntity.ok(userService.updateOwnProfile(userId, request));
+    @PatchMapping("/users/me")
+    public UserResponseDTO updateOwnProfile(@AuthenticationPrincipal UUID userId,
+                                            @Valid @RequestBody UserUpdateDTO request) {
+        return userService.updateOwnProfile(userId, request);
     }
 
-    @PostMapping("/me/roles")
-    public ResponseEntity<OwnProfileDTO> addRole(@AuthenticationPrincipal UUID userId,
-                                                 @Valid @RequestBody AddRoleDTO request) {
-        return ResponseEntity.ok(userService.addRole(userId, request.getRole()));
+    @PostMapping("/users/me/roles/{role}")
+    public UserResponseDTO addRole(@AuthenticationPrincipal UUID userId, @PathVariable RoleName role) {
+        return userService.addRole(userId, role);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PublicProfileDTO> getPublicProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getPublicProfile(id));
+    @GetMapping("/users/{id}")
+    public UserResponseDTO getPublicProfile(@PathVariable UUID id) {
+        return userService.getPublicProfile(id);
+    }
+
+    @GetMapping("/admin/users")
+    public List<UserResponseDTO> findAll() {
+        return userService.findAll();
+    }
+
+    @GetMapping("/admin/users/{id}")
+    public UserResponseDTO findById(@PathVariable UUID id) {
+        return userService.findById(id);
+    }
+
+    @PatchMapping("/admin/users/{id}/deactivate")
+    public UserResponseDTO deactivate(@AuthenticationPrincipal UUID adminId, @PathVariable UUID id,
+                                      @RequestParam String reason) {
+        return userService.changeStatus(adminId, id, AccountStatus.INACTIVE, reason);
+    }
+
+    @PatchMapping("/admin/users/{id}/activate")
+    public UserResponseDTO activate(@AuthenticationPrincipal UUID adminId, @PathVariable UUID id,
+                                    @RequestParam String reason) {
+        return userService.changeStatus(adminId, id, AccountStatus.ACTIVE, reason);
     }
 }

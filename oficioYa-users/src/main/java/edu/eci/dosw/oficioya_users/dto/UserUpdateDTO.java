@@ -7,10 +7,7 @@ import lombok.Data;
 
 import java.util.List;
 
-/**
- * Campos editables del perfil (RF-04). Actualización parcial: los campos nulos no se modifican.
- * El correo no se puede modificar; el estado y los roles se cambian por sus propios endpoints.
- */
+/** Campos editables del perfil (RF-04). Los campos nulos no se modifican. El correo no es editable. */
 @Data
 public class UserUpdateDTO {
     @Size(max = 100, message = "El nombre admite máximo 100 caracteres")

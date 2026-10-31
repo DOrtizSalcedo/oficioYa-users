@@ -11,7 +11,7 @@ import lombok.Data;
 import java.util.List;
 import java.util.Set;
 
-/** Datos de registro (RF-01). Solo se admiten los roles TRABAJADOR y CONTRATANTE. */
+/** Datos de registro (RF-01). */
 @Data
 public class UserRequestDTO {
     @NotBlank(message = "El nombre es obligatorio")
