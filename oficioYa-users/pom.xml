@@ -41,6 +41,9 @@
 		<java.version>21</java.version>
 		<lombok.version>1.18.42</lombok.version>
 		<jacoco.version>0.8.14</jacoco.version>
+		<springdoc.version>2.6.0</springdoc.version>
+		<!-- Mismas exclusiones de cobertura que JaCoCo -->
+		<sonar.coverage.exclusions>**/OficioyaUsersApplication.java,**/dto/**,**/entity/**</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -97,6 +100,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Swagger / OpenAPI -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
 
 		<!-- Testing unificado de Spring Boot -->
 		<dependency>
