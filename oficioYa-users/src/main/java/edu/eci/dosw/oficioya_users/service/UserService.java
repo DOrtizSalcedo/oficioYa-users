@@ -8,15 +8,17 @@ import edu.eci.dosw.oficioya_users.entity.Role;
 import edu.eci.dosw.oficioya_users.entity.User;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
+import edu.eci.dosw.oficioya_users.exception.BadRequestException;
+import edu.eci.dosw.oficioya_users.exception.ConflictException;
+import edu.eci.dosw.oficioya_users.exception.ForbiddenOperationException;
+import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
 import edu.eci.dosw.oficioya_users.mapper.UserMapper;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
 import edu.eci.dosw.oficioya_users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
@@ -33,13 +35,14 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
 
+    /** RF-01 **/
     public UserResponseDTO register(UserRequestDTO request) {
-        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmail(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta con ese correo");
-        }
         request.getRoles().forEach(this::checkNotAdmin);
         validatePhones(request.getPhones());
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Ya existe una cuenta con ese correo");
+        }
 
         User user = new User();
         user.setName(request.getName().trim());
@@ -51,6 +54,18 @@ public class UserService {
         User saved = userRepository.save(user);
         log.info("Cuenta registrada {} con roles {}", saved.getId(), request.getRoles());
         return userMapper.toOwn(saved);
+    }
+
+    /** RF-02 */
+    public UserResponseDTO addRole(UUID userId, RoleName roleName) {
+        checkNotAdmin(roleName);
+        User user = getActiveUser(userId);
+        if (user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName.name()))) {
+            throw new ConflictException("La cuenta ya tiene el rol " + roleName);
+        }
+        user.getRoles().add(findRole(roleName));
+        log.info("Rol {} agregado a la cuenta {}", roleName, userId);
+        return userMapper.toOwn(userRepository.save(user));
     }
 
     /** RF-03 */
@@ -73,18 +88,6 @@ public class UserService {
         return userMapper.toOwn(userRepository.save(user));
     }
 
-    /** RF-02 */
-    public UserResponseDTO addRole(UUID userId, RoleName roleName) {
-        checkNotAdmin(roleName);
-        User user = getActiveUser(userId);
-        if (user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName.name()))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta ya tiene el rol " + roleName);
-        }
-        user.getRoles().add(findRole(roleName));
-        log.info("Rol {} agregado a la cuenta {}", roleName, userId);
-        return userMapper.toOwn(userRepository.save(user));
-    }
-
     /** RF-05 */
     @Transactional(readOnly = true)
     public UserResponseDTO getPublicProfile(UUID id) {
@@ -98,40 +101,40 @@ public class UserService {
         return userRepository.findAll().stream().map(userMapper::toAdmin).toList();
     }
 
-    /** RF-08 */
-    @Transactional(readOnly = true)
-    public UserResponseDTO findById(UUID id) {
-        return userMapper.toAdmin(userRepository.findById(id).orElseThrow(() -> notFound(id)));
-    }
-
     /** RF-06, RF-07 */
     public UserResponseDTO changeStatus(UUID adminId, UUID userId, AccountStatus status, String reason) {
         if (reason == null || reason.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El motivo es obligatorio");
+            throw new BadRequestException("El motivo es obligatorio");
         }
         if (adminId.equals(userId) && status == AccountStatus.INACTIVE) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Un administrador no puede desactivar su propia cuenta");
+            throw new ForbiddenOperationException("Un administrador no puede desactivar su propia cuenta");
         }
         User user = userRepository.findById(userId).orElseThrow(() -> notFound(userId));
         if (user.getAccountStatus() == status) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta ya está en estado " + status);
+            throw new ConflictException("La cuenta ya está en estado " + status);
         }
         user.setAccountStatus(status);
         log.info("Admin {} cambió la cuenta {} a {}. Motivo: {}", adminId, userId, status, reason.trim());
         return userMapper.toAdmin(userRepository.save(user));
     }
 
+    /** RF-08 */
+    @Transactional(readOnly = true)
+    public UserResponseDTO findById(UUID id) {
+        return userMapper.toAdmin(userRepository.findById(id).orElseThrow(() -> notFound(id)));
+    }
+
     private User getActiveUser(UUID id) {
         User user = userRepository.findById(id).orElseThrow(() -> notFound(id));
         if (user.getAccountStatus() != AccountStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La cuenta está inactiva");
+            throw new ForbiddenOperationException("La cuenta está inactiva");
         }
         return user;
     }
 
     private void checkNotAdmin(RoleName roleName) {
         if (roleName == RoleName.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El rol ADMIN no se puede asignar desde la cuenta");
+            throw new BadRequestException("El rol ADMIN no se puede asignar desde la cuenta");
         }
     }
 
@@ -142,14 +145,14 @@ public class UserService {
 
     private void validatePhones(List<PhoneDTO> phones) {
         if (phones.stream().filter(PhoneDTO::isPrincipal).count() != 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe haber exactamente un teléfono principal");
+            throw new BadRequestException("Debe haber exactamente un teléfono principal");
         }
         if (phones.stream().map(PhoneDTO::getNumber).distinct().count() != phones.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hay números de teléfono repetidos");
+            throw new BadRequestException("Hay números de teléfono repetidos");
         }
     }
 
-    private ResponseStatusException notFound(UUID id) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado: " + id);
+    private ResourceNotFoundException notFound(UUID id) {
+        return new ResourceNotFoundException("Usuario no encontrado: " + id);
     }
 }
