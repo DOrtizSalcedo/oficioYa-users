@@ -18,7 +18,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import edu.eci.dosw.oficioya_users.exception.ApiException;
+import org.junit.jupiter.api.function.Executable;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,7 +33,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -98,11 +101,11 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
-    private void assertStatus(Runnable action, HttpStatus status) {
-        assertThatThrownBy(action::run).isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode()).isEqualTo(status);
+    private void assertStatus(Executable action, HttpStatus status) {
+        ApiException exception = assertThrows(ApiException.class, action);
+        assertEquals(status, exception.getStatus());
     }
-    
+
     @Test
     void registerCreatesActiveAccountWithMaskedData() {
         when(userRepository.existsByEmail("ana@mail.com")).thenReturn(false);
@@ -127,15 +130,13 @@ class UserServiceTest {
     }
 
     @Test
-    void registerRejectsAdminRole() {
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
-
-        assertStatus(() -> userService.register(request(RoleName.ADMIN)), HttpStatus.FORBIDDEN);
+    void registerRejectsAdminRoleBeforeCheckingEmail() {
+        assertStatus(() -> userService.register(request(RoleName.ADMIN)), HttpStatus.BAD_REQUEST);
+        verifyNoInteractions(userRepository);
     }
 
     @Test
     void registerRequiresExactlyOnePrincipalPhone() {
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
         UserRequestDTO request = request(RoleName.CONTRATANTE);
         request.setPhones(List.of(phoneDTO("3001234567", false)));
 
@@ -144,7 +145,6 @@ class UserServiceTest {
 
     @Test
     void registerRejectsRepeatedPhones() {
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
         UserRequestDTO request = request(RoleName.CONTRATANTE);
         request.setPhones(List.of(phoneDTO("3001234567", true), phoneDTO("3001234567", false)));
 
@@ -153,11 +153,9 @@ class UserServiceTest {
 
     @Test
     void registerFailsWhenRoleIsNotSeeded() {
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(roleRepository.findByName("CONTRATANTE")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.register(request(RoleName.CONTRATANTE)))
-                .isInstanceOf(IllegalStateException.class);
+        assertThrows(IllegalStateException.class, () -> userService.register(request(RoleName.CONTRATANTE)));
     }
 
     @Test
@@ -229,7 +227,7 @@ class UserServiceTest {
 
     @Test
     void addRoleRejectsAdmin() {
-        assertStatus(() -> userService.addRole(UUID.randomUUID(), RoleName.ADMIN), HttpStatus.FORBIDDEN);
+        assertStatus(() -> userService.addRole(UUID.randomUUID(), RoleName.ADMIN), HttpStatus.BAD_REQUEST);
     }
 
     @Test

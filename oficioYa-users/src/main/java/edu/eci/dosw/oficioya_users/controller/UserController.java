@@ -3,6 +3,7 @@ package edu.eci.dosw.oficioya_users.controller;
 import edu.eci.dosw.oficioya_users.dto.UserRequestDTO;
 import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
 import edu.eci.dosw.oficioya_users.dto.UserUpdateDTO;
+import edu.eci.dosw.oficioya_users.dto.StatusChangeDTO;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.service.UserService;
@@ -61,13 +62,13 @@ public class UserController {
 
     @PatchMapping("/admin/users/{id}/deactivate")
     public UserResponseDTO deactivate(@AuthenticationPrincipal UUID adminId, @PathVariable UUID id,
-                                      @RequestParam String reason) {
-        return userService.changeStatus(adminId, id, AccountStatus.INACTIVE, reason);
+                                      @Valid @RequestBody StatusChangeDTO request) {
+        return userService.changeStatus(adminId, id, AccountStatus.INACTIVE, request.getReason());
     }
 
     @PatchMapping("/admin/users/{id}/activate")
     public UserResponseDTO activate(@AuthenticationPrincipal UUID adminId, @PathVariable UUID id,
-                                    @RequestParam String reason) {
-        return userService.changeStatus(adminId, id, AccountStatus.ACTIVE, reason);
+                                    @Valid @RequestBody StatusChangeDTO request) {
+        return userService.changeStatus(adminId, id, AccountStatus.ACTIVE, request.getReason());
     }
 }
