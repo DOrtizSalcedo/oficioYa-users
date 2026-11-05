@@ -1,6 +1,5 @@
 package edu.eci.dosw.oficioya_users.repository;
 
-import edu.eci.dosw.oficioya_users.entity.Permission;
 import edu.eci.dosw.oficioya_users.entity.Phone;
 import edu.eci.dosw.oficioya_users.entity.Role;
 import edu.eci.dosw.oficioya_users.entity.User;
@@ -29,14 +28,10 @@ class UserRepositoryTest {
     private TestEntityManager entityManager;
 
     private User newUser(String email, AccountStatus status) {
-        Role role = roleRepository.findByName("PRUEBA").orElseGet(() -> {
-            Permission permission = new Permission();
-            permission.setName("EDITAR_PERFIL");
-            entityManager.persist(permission);
-            Role r = new Role();
-            r.setName("PRUEBA");
-            r.getPermissions().add(permission);
-            return roleRepository.save(r);
+        Role roleRepo = roleRepository.findByName("PRUEBA").orElseGet(() -> {
+            Role role = new Role();
+            role.setName("PRUEBA");
+            return roleRepository.save(role);
         });
         Phone principal = new Phone();
         principal.setNumber("3001234567");
@@ -49,21 +44,21 @@ class UserRepositoryTest {
         user.setEmail(email);
         user.setAccountStatus(status);
         user.setPhones(List.of(principal, secondary));
-        user.setRoles(new HashSet<>(Set.of(role)));
+        user.setRoles(new HashSet<>(Set.of(roleRepo)));
         User saved = userRepository.saveAndFlush(user);
         entityManager.clear();
         return saved;
     }
 
     @Test
-    void savesUserWithPhonesRolesPermissionsAndDates() {
+    void savesUserWithPhonesRolesAndDates() {
         User saved = newUser("ana@mail.com", null);
 
         User found = userRepository.findById(saved.getId()).orElseThrow();
         assertThat(found.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getPhones()).hasSize(2);
-        assertThat(found.getRoles().iterator().next().getPermissions()).hasSize(1);
+        assertThat(found.getRoles()).extracting(Role::getName).containsExactly("PRUEBA");
         assertThat(userRepository.existsByEmail("ana@mail.com")).isTrue();
         assertThat(userRepository.existsByEmail("otro@mail.com")).isFalse();
     }
