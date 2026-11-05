@@ -1,7 +1,7 @@
 package edu.eci.dosw.oficioya_users.config;
 
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
+import edu.eci.dosw.oficioya_users.entity.RoleEntity;
+import edu.eci.dosw.oficioya_users.entity.UserEntity;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
 import edu.eci.dosw.oficioya_users.repository.UserRepository;
@@ -35,8 +35,8 @@ class AdminSeederTest {
         return new AdminSeeder().seedAdmin(userRepository, roleRepository, email, " Administrador ", phone);
     }
 
-    private static Role adminRole() {
-        Role role = new Role();
+    private static RoleEntity adminRole() {
+        RoleEntity role = new RoleEntity();
         role.setName("ADMIN");
         return role;
     }
@@ -45,17 +45,17 @@ class AdminSeederTest {
     void createsActiveAdminWithNormalizedEmailAndPrincipalPhone() throws Exception {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole()));
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         runner("  Admin@OficioYA.com ", "3000000000").run();
 
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
         verify(userRepository).save(captor.capture());
-        User admin = captor.getValue();
+        UserEntity admin = captor.getValue();
         assertThat(admin.getEmail()).isEqualTo(EMAIL);
         assertThat(admin.getName()).isEqualTo("Administrador");
         assertThat(admin.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
-        assertThat(admin.getRoles()).extracting(Role::getName).containsExactly("ADMIN");
+        assertThat(admin.getRoles()).extracting(RoleEntity::getName).containsExactly("ADMIN");
         assertThat(admin.getPhones()).hasSize(1);
         assertThat(admin.getPhones().get(0).getNumber()).isEqualTo("3000000000");
         assertThat(admin.getPhones().get(0).isPrincipal()).isTrue();

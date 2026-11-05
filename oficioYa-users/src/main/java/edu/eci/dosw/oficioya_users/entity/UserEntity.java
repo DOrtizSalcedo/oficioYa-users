@@ -16,7 +16,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "users")
-public class User {
+public class UserEntity {
 
     @Id
     @GeneratedValue
@@ -38,13 +38,13 @@ public class User {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Phone> phones = new ArrayList<>();
+    private List<PhoneEntity> phones = new ArrayList<>();
 
     @ManyToMany
     @JoinTable(name = "users_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
+    private Set<RoleEntity> roles = new HashSet<>();
 
     @PrePersist
     void onCreate() {
@@ -60,14 +60,14 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
-    public void setPhones(List<Phone> newPhones) {
+    public void setPhones(List<PhoneEntity> newPhones) {
         phones.clear();
         if (newPhones != null) {
             newPhones.forEach(this::addPhone);
         }
     }
 
-    public void addPhone(Phone phone) {
+    public void addPhone(PhoneEntity phone) {
         phone.setUser(this);
         phones.add(phone);
     }

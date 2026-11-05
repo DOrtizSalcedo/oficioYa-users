@@ -4,11 +4,12 @@ import edu.eci.dosw.oficioya_users.dto.PhoneDTO;
 import edu.eci.dosw.oficioya_users.dto.UserRequestDTO;
 import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
 import edu.eci.dosw.oficioya_users.dto.UserUpdateDTO;
-import edu.eci.dosw.oficioya_users.entity.Phone;
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
+import edu.eci.dosw.oficioya_users.entity.PhoneEntity;
+import edu.eci.dosw.oficioya_users.entity.RoleEntity;
+import edu.eci.dosw.oficioya_users.entity.UserEntity;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
+import edu.eci.dosw.oficioya_users.mapper.UserEntityMapperImpl;
 import edu.eci.dosw.oficioya_users.mapper.UserMapper;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
 import edu.eci.dosw.oficioya_users.repository.UserRepository;
@@ -34,7 +35,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,11 +52,11 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, roleRepository, new UserMapper());
+        userService = new UserService(userRepository, roleRepository, new UserEntityMapperImpl(), new UserMapper());
     }
 
-    private static Role role(String name) {
-        Role role = new Role();
+    private static RoleEntity role(String name) {
+        RoleEntity role = new RoleEntity();
         role.setId(UUID.randomUUID());
         role.setName(name);
         return role;
@@ -69,18 +69,18 @@ class UserServiceTest {
         return dto;
     }
 
-    private static User user(AccountStatus status, String... roles) {
-        User user = new User();
+    private static UserEntity user(AccountStatus status, String... roles) {
+        UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
         user.setName("Ana Pérez");
         user.setEmail("ana@mail.com");
         user.setAccountStatus(status);
         user.setCreatedAt(LocalDateTime.now());
-        Phone phone = new Phone();
+        PhoneEntity phone = new PhoneEntity();
         phone.setNumber("3001234567");
         phone.setPrincipal(true);
         user.setPhones(List.of(phone));
-        Set<Role> set = new HashSet<>();
+        Set<RoleEntity> set = new HashSet<>();
         for (String name : roles) {
             set.add(role(name));
         }
@@ -98,7 +98,7 @@ class UserServiceTest {
     }
 
     private void saveReturnsArgument() {
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private void assertStatus(Executable action, HttpStatus status) {
@@ -160,7 +160,7 @@ class UserServiceTest {
 
     @Test
     void getOwnProfileReturnsMaskedData() {
-        User user = user(AccountStatus.ACTIVE, "CONTRATANTE");
+        UserEntity user = user(AccountStatus.ACTIVE, "CONTRATANTE");
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         assertThat(userService.getOwnProfile(user.getId()).getEmail()).isEqualTo("*****@mail.com");
@@ -176,7 +176,7 @@ class UserServiceTest {
 
     @Test
     void getOwnProfileFailsWhenAccountIsInactive() {
-        User user = user(AccountStatus.INACTIVE);
+        UserEntity user = user(AccountStatus.INACTIVE);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         assertStatus(() -> userService.getOwnProfile(user.getId()), HttpStatus.FORBIDDEN);
@@ -184,7 +184,7 @@ class UserServiceTest {
 
     @Test
     void updateOwnProfileChangesNameAndPhones() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         saveReturnsArgument();
         UserUpdateDTO request = new UserUpdateDTO();
@@ -199,7 +199,7 @@ class UserServiceTest {
 
     @Test
     void updateOwnProfileWithoutChangesKeepsData() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         saveReturnsArgument();
 
@@ -208,7 +208,7 @@ class UserServiceTest {
 
     @Test
     void addRoleAddsMissingRole() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(roleRepository.findByName("CONTRATANTE")).thenReturn(Optional.of(role("CONTRATANTE")));
         saveReturnsArgument();
@@ -219,7 +219,7 @@ class UserServiceTest {
 
     @Test
     void addRoleRejectsRoleAlreadyAssigned() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         assertStatus(() -> userService.addRole(user.getId(), RoleName.TRABAJADOR), HttpStatus.CONFLICT);
@@ -232,7 +232,7 @@ class UserServiceTest {
 
     @Test
     void getPublicProfileHidesContactData() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
         when(userRepository.findByIdAndAccountStatus(user.getId(), AccountStatus.ACTIVE)).thenReturn(Optional.of(user));
 
         UserResponseDTO result = userService.getPublicProfile(user.getId());
@@ -252,7 +252,7 @@ class UserServiceTest {
 
     @Test
     void adminSeesFullData() {
-        User user = user(AccountStatus.INACTIVE, "TRABAJADOR");
+        UserEntity user = user(AccountStatus.INACTIVE, "TRABAJADOR");
         when(userRepository.findAll()).thenReturn(List.of(user));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
@@ -270,13 +270,15 @@ class UserServiceTest {
 
     @Test
     void deactivateAndActivateChangeStatus() {
-        User user = user(AccountStatus.ACTIVE, "TRABAJADOR");
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        UserEntity active = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UserEntity inactive = user(AccountStatus.INACTIVE, "TRABAJADOR");
+        inactive.setId(active.getId());
+        when(userRepository.findById(active.getId())).thenReturn(Optional.of(active), Optional.of(inactive));
         saveReturnsArgument();
 
-        assertThat(userService.changeStatus(adminId, user.getId(), AccountStatus.INACTIVE, "Mal uso")
+        assertThat(userService.changeStatus(adminId, active.getId(), AccountStatus.INACTIVE, "Mal uso")
                 .getAccountStatus()).isEqualTo(AccountStatus.INACTIVE);
-        assertThat(userService.changeStatus(adminId, user.getId(), AccountStatus.ACTIVE, "Resuelto")
+        assertThat(userService.changeStatus(adminId, active.getId(), AccountStatus.ACTIVE, "Resuelto")
                 .getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
     }
 
@@ -295,7 +297,7 @@ class UserServiceTest {
 
     @Test
     void changeStatusToSameStatusIsConflict() {
-        User user = user(AccountStatus.ACTIVE);
+        UserEntity user = user(AccountStatus.ACTIVE);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         assertStatus(() -> userService.changeStatus(adminId, user.getId(), AccountStatus.ACTIVE, "Prueba"),
