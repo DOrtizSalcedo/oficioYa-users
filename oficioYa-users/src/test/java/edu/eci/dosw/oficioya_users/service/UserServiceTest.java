@@ -231,11 +231,21 @@ class UserServiceTest {
     }
 
     @Test
+    void addRoleRejectsAdminAccount() {
+        UserEntity admin = user(AccountStatus.ACTIVE, "ADMIN");
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+        assertStatus(() -> userService.addRole(admin.getId(), RoleName.TRABAJADOR), HttpStatus.FORBIDDEN);
+    }
+
+    @Test
     void getPublicProfileHidesContactData() {
+        UserEntity requester = user(AccountStatus.ACTIVE, "CONTRATANTE");
         UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(requester.getId())).thenReturn(Optional.of(requester));
         when(userRepository.findByIdAndAccountStatus(user.getId(), AccountStatus.ACTIVE)).thenReturn(Optional.of(user));
 
-        UserResponseDTO result = userService.getPublicProfile(user.getId());
+        UserResponseDTO result = userService.getPublicProfile(requester.getId(), user.getId());
 
         assertThat(result.getName()).isEqualTo("Ana Pérez");
         assertThat(result.getEmail()).isNull();
@@ -244,10 +254,20 @@ class UserServiceTest {
 
     @Test
     void getPublicProfileFailsForMissingOrInactiveUser() {
+        UserEntity requester = user(AccountStatus.ACTIVE, "CONTRATANTE");
         UUID id = UUID.randomUUID();
+        when(userRepository.findById(requester.getId())).thenReturn(Optional.of(requester));
         when(userRepository.findByIdAndAccountStatus(id, AccountStatus.ACTIVE)).thenReturn(Optional.empty());
 
-        assertStatus(() -> userService.getPublicProfile(id), HttpStatus.NOT_FOUND);
+        assertStatus(() -> userService.getPublicProfile(requester.getId(), id), HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getPublicProfileRejectsInactiveRequester() {
+        UserEntity requester = user(AccountStatus.INACTIVE, "CONTRATANTE");
+        when(userRepository.findById(requester.getId())).thenReturn(Optional.of(requester));
+
+        assertStatus(() -> userService.getPublicProfile(requester.getId(), UUID.randomUUID()), HttpStatus.FORBIDDEN);
     }
 
     @Test

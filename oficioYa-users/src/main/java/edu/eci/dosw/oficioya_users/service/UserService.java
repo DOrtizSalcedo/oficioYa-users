@@ -62,6 +62,11 @@ public class UserService {
     public UserResponseDTO addRole(UUID userId, RoleName roleName) {
         checkNotAdmin(roleName);
         UserModel user = getActiveUser(userId);
+
+        if (user.getRoles().stream().anyMatch(role -> role.getName().equals(RoleName.ADMIN.name()))) {
+            throw new ForbiddenOperationException("El administrador no puede agregarse roles");
+        }
+
         if (user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName.name()))) {
             throw new ConflictException("La cuenta ya tiene el rol " + roleName);
         }
@@ -92,7 +97,8 @@ public class UserService {
 
     /** RF-05 */
     @Transactional(readOnly = true)
-    public UserResponseDTO getPublicProfile(UUID id) {
+    public UserResponseDTO getPublicProfile(UUID requesterId, UUID id) {
+        getActiveUser(requesterId);
         return userRepository.findByIdAndAccountStatus(id, AccountStatus.ACTIVE)
                 .map(userEntityMapper::toModel)
                 .map(userMapper::toPublic)
