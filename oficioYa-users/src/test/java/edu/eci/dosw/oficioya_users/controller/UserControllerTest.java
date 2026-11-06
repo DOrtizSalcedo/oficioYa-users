@@ -152,7 +152,7 @@ class UserControllerTest {
     @Test
     void publicProfile() throws Exception {
         UUID otherId = UUID.randomUUID();
-        when(userService.getPublicProfile(otherId)).thenReturn(response("Luis"));
+        when(userService.getPublicProfile(userId, otherId)).thenReturn(response("Luis"));
 
         mockMvc.perform(get("/api/users/{id}", otherId).header(AUTH, token("CONTRATANTE")))
                 .andExpect(status().isOk())
@@ -222,7 +222,7 @@ class UserControllerTest {
     @Test
     void businessExceptionsAreTranslatedToApiError() throws Exception {
         UUID missing = UUID.randomUUID();
-        when(userService.getPublicProfile(missing))
+        when(userService.getPublicProfile(userId, missing))
                 .thenThrow(new ResourceNotFoundException("Usuario no encontrado: " + missing));
         when(userService.register(any(UserRequestDTO.class)))
                 .thenThrow(new ConflictException("Ya existe una cuenta con ese correo"));
