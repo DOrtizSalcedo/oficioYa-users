@@ -27,6 +27,10 @@ El sistema de OficioYa debe tener:
 4. Cobertura de pruebas unitarios de mínimo del 80%
 5. El sistema debe registrar logs de cada generación y exportación de reporte
 
+### 1.3 Criterios de aceptación
+
+Los criterios de aceptación de cada requerimiento funcional están en [Criterios de aceptación](./acceptance-criteria.md).
+
 ## 2. Diagramas de caso de uso
 
 ### 2.1 Requerimiento Funcional 1
