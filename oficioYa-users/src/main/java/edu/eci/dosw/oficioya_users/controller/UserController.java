@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Tag(name = "Usuarios", description = "Registro, perfil propio, perfiles públicos y administración de cuentas")
 public class UserController {
