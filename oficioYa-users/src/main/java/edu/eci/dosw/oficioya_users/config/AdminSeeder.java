@@ -1,8 +1,8 @@
 package edu.eci.dosw.oficioya_users.config;
 
-import edu.eci.dosw.oficioya_users.entity.Phone;
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
+import edu.eci.dosw.oficioya_users.entity.PhoneEntity;
+import edu.eci.dosw.oficioya_users.entity.RoleEntity;
+import edu.eci.dosw.oficioya_users.entity.UserEntity;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
@@ -38,14 +38,14 @@ public class AdminSeeder {
             if (phone == null || phone.isBlank()) {
                 throw new IllegalStateException("ADMIN_PHONE es obligatorio para crear el administrador");
             }
-            Role adminRole = roleRepository.findByName(RoleName.ADMIN.name())
+            RoleEntity adminRole = roleRepository.findByName(RoleName.ADMIN.name())
                     .orElseThrow(() -> new IllegalStateException("Rol no configurado: ADMIN"));
 
-            Phone principal = new Phone();
+            PhoneEntity principal = new PhoneEntity();
             principal.setNumber(phone.trim());
             principal.setPrincipal(true);
 
-            User admin = new User();
+            UserEntity admin = new UserEntity();
             admin.setName(name.trim());
             admin.setEmail(normalized);
             admin.setAccountStatus(AccountStatus.ACTIVE);

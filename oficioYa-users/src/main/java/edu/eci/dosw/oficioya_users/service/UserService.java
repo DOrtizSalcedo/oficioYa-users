@@ -4,15 +4,16 @@ import edu.eci.dosw.oficioya_users.dto.PhoneDTO;
 import edu.eci.dosw.oficioya_users.dto.UserRequestDTO;
 import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
 import edu.eci.dosw.oficioya_users.dto.UserUpdateDTO;
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.exception.BadRequestException;
 import edu.eci.dosw.oficioya_users.exception.ConflictException;
 import edu.eci.dosw.oficioya_users.exception.ForbiddenOperationException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
+import edu.eci.dosw.oficioya_users.mapper.UserEntityMapper;
 import edu.eci.dosw.oficioya_users.mapper.UserMapper;
+import edu.eci.dosw.oficioya_users.model.RoleModel;
+import edu.eci.dosw.oficioya_users.model.UserModel;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
 import edu.eci.dosw.oficioya_users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,9 +34,10 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserEntityMapper userEntityMapper;
     private final UserMapper userMapper;
 
-    /** RF-01 **/
+    /** RF-01 */
     public UserResponseDTO register(UserRequestDTO request) {
         request.getRoles().forEach(this::checkNotAdmin);
         validatePhones(request.getPhones());
@@ -44,14 +46,14 @@ public class UserService {
             throw new ConflictException("Ya existe una cuenta con ese correo");
         }
 
-        User user = new User();
+        UserModel user = new UserModel();
         user.setName(request.getName().trim());
         user.setEmail(email);
         user.setAccountStatus(AccountStatus.ACTIVE);
         user.setPhones(userMapper.toPhones(request.getPhones()));
         user.setRoles(request.getRoles().stream().map(this::findRole).collect(Collectors.toSet()));
 
-        User saved = userRepository.save(user);
+        UserModel saved = save(user);
         log.info("Cuenta registrada {} con roles {}", saved.getId(), request.getRoles());
         return userMapper.toOwn(saved);
     }
@@ -59,13 +61,13 @@ public class UserService {
     /** RF-02 */
     public UserResponseDTO addRole(UUID userId, RoleName roleName) {
         checkNotAdmin(roleName);
-        User user = getActiveUser(userId);
+        UserModel user = getActiveUser(userId);
         if (user.getRoles().stream().anyMatch(role -> role.getName().equals(roleName.name()))) {
             throw new ConflictException("La cuenta ya tiene el rol " + roleName);
         }
         user.getRoles().add(findRole(roleName));
         log.info("Rol {} agregado a la cuenta {}", roleName, userId);
-        return userMapper.toOwn(userRepository.save(user));
+        return userMapper.toOwn(save(user));
     }
 
     /** RF-03 */
@@ -76,7 +78,7 @@ public class UserService {
 
     /** RF-04 */
     public UserResponseDTO updateOwnProfile(UUID userId, UserUpdateDTO request) {
-        User user = getActiveUser(userId);
+        UserModel user = getActiveUser(userId);
         if (request.getName() != null) {
             user.setName(request.getName().trim());
         }
@@ -85,20 +87,30 @@ public class UserService {
             user.setPhones(userMapper.toPhones(request.getPhones()));
         }
         log.info("Perfil actualizado {}", userId);
-        return userMapper.toOwn(userRepository.save(user));
+        return userMapper.toOwn(save(user));
     }
 
     /** RF-05 */
     @Transactional(readOnly = true)
     public UserResponseDTO getPublicProfile(UUID id) {
         return userRepository.findByIdAndAccountStatus(id, AccountStatus.ACTIVE)
+                .map(userEntityMapper::toModel)
                 .map(userMapper::toPublic)
                 .orElseThrow(() -> notFound(id));
     }
 
     @Transactional(readOnly = true)
     public List<UserResponseDTO> findAll() {
-        return userRepository.findAll().stream().map(userMapper::toAdmin).toList();
+        return userRepository.findAll().stream()
+                .map(userEntityMapper::toModel)
+                .map(userMapper::toAdmin)
+                .toList();
+    }
+
+    /** RF-08 */
+    @Transactional(readOnly = true)
+    public UserResponseDTO findById(UUID id) {
+        return userMapper.toAdmin(findUser(id));
     }
 
     /** RF-06, RF-07 */
@@ -109,23 +121,37 @@ public class UserService {
         if (adminId.equals(userId) && status == AccountStatus.INACTIVE) {
             throw new ForbiddenOperationException("Un administrador no puede desactivar su propia cuenta");
         }
-        User user = userRepository.findById(userId).orElseThrow(() -> notFound(userId));
+        UserModel user = findUser(userId);
         if (user.getAccountStatus() == status) {
             throw new ConflictException("La cuenta ya está en estado " + status);
         }
         user.setAccountStatus(status);
         log.info("Admin {} cambió la cuenta {} a {}. Motivo: {}", adminId, userId, status, reason.trim());
-        return userMapper.toAdmin(userRepository.save(user));
+        return userMapper.toAdmin(save(user));
     }
 
-    /** RF-08 */
-    @Transactional(readOnly = true)
-    public UserResponseDTO findById(UUID id) {
-        return userMapper.toAdmin(userRepository.findById(id).orElseThrow(() -> notFound(id)));
+    // Persistencia
+
+    private UserModel findUser(UUID id) {
+        return userRepository.findById(id)
+                .map(userEntityMapper::toModel)
+                .orElseThrow(() -> notFound(id));
     }
 
-    private User getActiveUser(UUID id) {
-        User user = userRepository.findById(id).orElseThrow(() -> notFound(id));
+    private UserModel save(UserModel user) {
+        return userEntityMapper.toModel(userRepository.save(userEntityMapper.toEntity(user)));
+    }
+
+    private RoleModel findRole(RoleName roleName) {
+        return roleRepository.findByName(roleName.name())
+                .map(userEntityMapper::toModel)
+                .orElseThrow(() -> new IllegalStateException("Rol no configurado: " + roleName));
+    }
+
+    // Reglas de Negocio
+
+    private UserModel getActiveUser(UUID id) {
+        UserModel user = findUser(id);
         if (user.getAccountStatus() != AccountStatus.ACTIVE) {
             throw new ForbiddenOperationException("La cuenta está inactiva");
         }
@@ -136,11 +162,6 @@ public class UserService {
         if (roleName == RoleName.ADMIN) {
             throw new BadRequestException("El rol ADMIN no se puede asignar desde la cuenta");
         }
-    }
-
-    private Role findRole(RoleName roleName) {
-        return roleRepository.findByName(roleName.name())
-                .orElseThrow(() -> new IllegalStateException("Rol no configurado: " + roleName));
     }
 
     private void validatePhones(List<PhoneDTO> phones) {

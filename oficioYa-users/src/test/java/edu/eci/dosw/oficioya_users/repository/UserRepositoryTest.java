@@ -1,8 +1,8 @@
 package edu.eci.dosw.oficioya_users.repository;
 
-import edu.eci.dosw.oficioya_users.entity.Phone;
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
+import edu.eci.dosw.oficioya_users.entity.PhoneEntity;
+import edu.eci.dosw.oficioya_users.entity.RoleEntity;
+import edu.eci.dosw.oficioya_users.entity.UserEntity;
 import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,46 +27,46 @@ class UserRepositoryTest {
     @Autowired
     private TestEntityManager entityManager;
 
-    private User newUser(String email, AccountStatus status) {
-        Role roleRepo = roleRepository.findByName("PRUEBA").orElseGet(() -> {
-            Role role = new Role();
+    private UserEntity newUser(String email, AccountStatus status) {
+        RoleEntity roleRepo = roleRepository.findByName("PRUEBA").orElseGet(() -> {
+            RoleEntity role = new RoleEntity();
             role.setName("PRUEBA");
             return roleRepository.save(role);
         });
-        Phone principal = new Phone();
+        PhoneEntity principal = new PhoneEntity();
         principal.setNumber("3001234567");
         principal.setPrincipal(true);
-        Phone secondary = new Phone();
+        PhoneEntity secondary = new PhoneEntity();
         secondary.setNumber("3109876543");
 
-        User user = new User();
+        UserEntity user = new UserEntity();
         user.setName("Ana Pérez");
         user.setEmail(email);
         user.setAccountStatus(status);
         user.setPhones(List.of(principal, secondary));
         user.setRoles(new HashSet<>(Set.of(roleRepo)));
-        User saved = userRepository.saveAndFlush(user);
+        UserEntity saved = userRepository.saveAndFlush(user);
         entityManager.clear();
         return saved;
     }
 
     @Test
     void savesUserWithPhonesRolesAndDates() {
-        User saved = newUser("ana@mail.com", null);
+        UserEntity saved = newUser("ana@mail.com", null);
 
-        User found = userRepository.findById(saved.getId()).orElseThrow();
+        UserEntity found = userRepository.findById(saved.getId()).orElseThrow();
         assertThat(found.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
         assertThat(found.getCreatedAt()).isNotNull();
         assertThat(found.getPhones()).hasSize(2);
-        assertThat(found.getRoles()).extracting(Role::getName).containsExactly("PRUEBA");
+        assertThat(found.getRoles()).extracting(RoleEntity::getName).containsExactly("PRUEBA");
         assertThat(userRepository.existsByEmail("ana@mail.com")).isTrue();
         assertThat(userRepository.existsByEmail("otro@mail.com")).isFalse();
     }
 
     @Test
     void findByIdAndAccountStatusIgnoresInactiveUsers() {
-        User active = newUser("activo@mail.com", AccountStatus.ACTIVE);
-        User inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
+        UserEntity active = newUser("activo@mail.com", AccountStatus.ACTIVE);
+        UserEntity inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
 
         assertThat(userRepository.findByIdAndAccountStatus(active.getId(), AccountStatus.ACTIVE)).isPresent();
         assertThat(userRepository.findByIdAndAccountStatus(inactive.getId(), AccountStatus.ACTIVE)).isEmpty();
@@ -74,9 +74,9 @@ class UserRepositoryTest {
 
     @Test
     void replacingPhonesRemovesOldOnes() {
-        User saved = newUser("ana@mail.com", AccountStatus.ACTIVE);
-        User found = userRepository.findById(saved.getId()).orElseThrow();
-        Phone phone = new Phone();
+        UserEntity saved = newUser("ana@mail.com", AccountStatus.ACTIVE);
+        UserEntity found = userRepository.findById(saved.getId()).orElseThrow();
+        PhoneEntity phone = new PhoneEntity();
         phone.setNumber("3205554444");
         phone.setPrincipal(true);
 
@@ -84,7 +84,7 @@ class UserRepositoryTest {
         userRepository.saveAndFlush(found);
 
         Long phones = entityManager.getEntityManager()
-                .createQuery("select count(p) from Phone p", Long.class).getSingleResult();
+                .createQuery("select count(p) from PhoneEntity p", Long.class).getSingleResult();
         assertThat(phones).isEqualTo(1L);
         assertThat(found.getUpdatedAt()).isNotNull();
     }

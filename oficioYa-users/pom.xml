@@ -42,8 +42,8 @@
 		<lombok.version>1.18.42</lombok.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<springdoc.version>2.6.0</springdoc.version>
-		<!-- Mismas exclusiones de cobertura que JaCoCo -->
-		<sonar.coverage.exclusions>**/OficioyaUsersApplication.java,**/dto/**,**/entity/**</sonar.coverage.exclusions>
+		<mapstruct.version>1.6.3</mapstruct.version>
+		<sonar.coverage.exclusions>**/OficioyaUsersApplication.java,**/dto/**,**/entity/**,**/model**</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -75,6 +75,13 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+
+		<!-- MapStruct -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${mapstruct.version}</version>
 		</dependency>
 
 		<!-- Spring Security y JWT -->
@@ -138,6 +145,16 @@
 							<artifactId>lombok</artifactId>
 							<version>${lombok.version}</version>
 						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok-mapstruct-binding</artifactId>
+							<version>0.2.0</version>
+						</path>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${mapstruct.version}</version>
+						</path>
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
@@ -171,6 +188,7 @@
 						<exclude>**/OficioyaUsersApplication.class</exclude>
 						<exclude>**/dto/**</exclude>
 						<exclude>**/entity/**</exclude>
+						<exclude>**/model/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>

@@ -23,7 +23,7 @@ El sistema de OficioYa debe tener:
 
 1. Correo y teléfono de trabajadores y contratantes deben estar ocultos para todos los usuarios (excepto para el administrador)
 2. El administrador tiene acceso a la información completa (incluso las ocultas) de un usuario
-3. Las acciones hechas por el administrador deben quedar registradas
+3. Las acciones hechas por el administrador deben quedar registradas en el archivo log
 4. Cobertura de pruebas unitarios de mínimo del 80%
 5. El sistema debe registrar logs de cada generación y exportación de reporte
 

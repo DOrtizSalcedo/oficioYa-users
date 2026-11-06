@@ -2,9 +2,9 @@ package edu.eci.dosw.oficioya_users.mapper;
 
 import edu.eci.dosw.oficioya_users.dto.PhoneDTO;
 import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
-import edu.eci.dosw.oficioya_users.entity.Phone;
-import edu.eci.dosw.oficioya_users.entity.Role;
-import edu.eci.dosw.oficioya_users.entity.User;
+import edu.eci.dosw.oficioya_users.model.PhoneModel;
+import edu.eci.dosw.oficioya_users.model.RoleModel;
+import edu.eci.dosw.oficioya_users.model.UserModel;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,9 +13,9 @@ import java.util.stream.Collectors;
 @Component
 public class UserMapper {
 
-    public List<Phone> toPhones(List<PhoneDTO> dtos) {
+    public List<PhoneModel> toPhones(List<PhoneDTO> dtos) {
         return dtos.stream().map(dto -> {
-            Phone phone = new Phone();
+            PhoneModel phone = new PhoneModel();
             phone.setNumber(dto.getNumber());
             phone.setPrincipal(dto.isPrincipal());
             return phone;
@@ -23,16 +23,16 @@ public class UserMapper {
     }
 
     /** RF-05 */
-    public UserResponseDTO toPublic(User user) {
+    public UserResponseDTO toPublic(UserModel user) {
         UserResponseDTO dto = new UserResponseDTO();
         dto.setId(user.getId());
         dto.setName(user.getName());
-        dto.setRoles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
+        dto.setRoles(user.getRoles().stream().map(RoleModel::getName).collect(Collectors.toSet()));
         return dto;
     }
 
     /** RF-03 */
-    public UserResponseDTO toOwn(User user) {
+    public UserResponseDTO toOwn(UserModel user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(maskEmail(user.getEmail()));
         dto.setPhones(user.getPhones().stream().map(p -> phoneDTO(maskPhone(p.getNumber()), p.isPrincipal())).toList());
@@ -42,7 +42,7 @@ public class UserMapper {
     }
 
     /** RF-08 */
-    public UserResponseDTO toAdmin(User user) {
+    public UserResponseDTO toAdmin(UserModel user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(user.getEmail());
         dto.setPhones(user.getPhones().stream().map(p -> phoneDTO(p.getNumber(), p.isPrincipal())).toList());

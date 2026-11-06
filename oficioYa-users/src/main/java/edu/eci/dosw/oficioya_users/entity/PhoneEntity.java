@@ -10,7 +10,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "phones")
-public class Phone {
+public class PhoneEntity {
 
     @Id
     @GeneratedValue
@@ -24,5 +24,5 @@ public class Phone {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private UserEntity user;
 }

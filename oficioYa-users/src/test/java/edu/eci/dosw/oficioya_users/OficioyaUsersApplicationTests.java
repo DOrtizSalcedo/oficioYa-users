@@ -1,6 +1,6 @@
 package edu.eci.dosw.oficioya_users;
 
-import edu.eci.dosw.oficioya_users.entity.Role;
+import edu.eci.dosw.oficioya_users.entity.RoleEntity;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +16,7 @@ class OficioyaUsersApplicationTests {
 
     @Test
     void contextLoadsAndSeedsRoles() {
-        assertThat(roleRepository.findAll()).extracting(Role::getName)
+        assertThat(roleRepository.findAll()).extracting(RoleEntity::getName)
                 .containsExactlyInAnyOrder("TRABAJADOR", "CONTRATANTE", "ADMIN");
     }
 }
