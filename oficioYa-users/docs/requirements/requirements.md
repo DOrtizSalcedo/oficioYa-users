@@ -26,6 +26,8 @@ El sistema de OficioYa debe tener:
 3. Las acciones hechas por el administrador deben quedar registradas en el archivo log
 4. Cobertura de pruebas unitarios de mínimo del 80%
 5. El sistema debe registrar logs de cada generación y exportación de reporte
+6. Los campos obligatorios se marcan con `*` y los campos de texto muestran su longitud máxima (y mínima cuando aplica)
+7. Mientras el front carga la información o si el back no responde, se muestra un esqueleto de carga (rectángulos grises) en lugar de un mensaje de error suelto
 
 ### 1.3 Criterios de aceptación
 
@@ -54,7 +56,7 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Descripción**              | *El sistema debe permitir que una cuenta con un solo rol (trabajador o contratante) agregue el rol faltante sin crear otra cuenta. Los datos que ya tiene la cuenta (nombre, correo, teléfono, foto) se reutilizan* |
 | **Precondiciones**           | *El usuario está autenticado y su cuenta está Activa y tiene exactamente un rol*                                                                |
 | **Actor**                    | *Usuario*                                                                                                                                       |
-| **Flujo principal**          | 1. El usuario ingresa a su perfil<br/>2. El usuario solicita agregar el rol faltante<br/>3. El sistema muestra únicamente los datos obligatorios del nuevo rol que la cuenta aún no tiene<br/>4. El usuario diligencia esos datos y los envía<br/>5. El sistema valida los datos<br/>6. El sistema habilita el nuevo rol en la misma cuenta |
+| **Flujo principal**          | 1. El usuario ingresa a su perfil<br/>2. El usuario pulsa el botón del rol faltante ("Quiero ser trabajador" o "Quiero contratar servicios")<br/>3. El sistema habilita el nuevo rol en la misma cuenta, sin formulario adicional |
 | **Diagrama de caso de uso**  | ![Diagrama RF-02](../uml/additional_role.png)                                                                                                   |
 | **Poscondiciones**           | *La cuenta tiene los roles de trabajador y de contratante. No se creó otra cuenta ni otro correo*                                              |
 
@@ -67,7 +69,7 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Descripción**              | *El sistema debe permitir a un usuario consultar su propio perfil con la información registrada en la plataforma*                       |
 | **Precondiciones**           | *El usuario está autenticado y su cuenta está Activa*                                                                                   |
 | **Actor**                    | *Trabajador o Contratante*                                                                                                              |
-| **Flujo principal**          | 1. El usuario ingresa a la sección Perfil<br/>2. El sistema muestra los datos del perfil de cada uno de sus roles pero con correo y teléfono ocultos de manera parcial (ej: *****@gmail.com) |
+| **Flujo principal**          | 1. El usuario ingresa a la sección Perfil<br/>2. El sistema muestra los datos del perfil de cada uno de sus roles pero con correo y teléfonos ocultos de manera parcial (ej: *****@gmail.com, ******4567)<br/>3. Los teléfonos se muestran separados: primero el teléfono principal y debajo la lista de teléfonos adicionales |
 | **Diagrama de caso de uso**  | ![Diagrama RF-03](../uml/query_profile.png)                                                                                             |
 | **Poscondiciones**           | *El usuario ve todos los datos de su perfil. No se muestran datos de otros usuarios*                                                    |
 
@@ -80,9 +82,9 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Descripción**              | *El sistema debe permitir que un usuario modifique los campos editables de su perfil*                                                                                 |
 | **Precondiciones**           | *El usuario está autenticado y su cuenta está Activa*                                                                                                                 |
 | **Actor**                    | *Trabajador o Contratante*                                                                                                                                            |
-| **Flujo principal**          | 1. El usuario ingresa a la sección Editar perfil<br/>2. El sistema muestra los campos editables con su valor actual<br/>3. El usuario modifica uno o más campos y confirma<br/>4. El sistema valida los datos con las mismas reglas del registro<br/>5. El sistema guarda los cambios |
+| **Flujo principal**          | 1. El usuario ingresa a la sección Editar perfil<br/>2. El sistema muestra el nombre y los teléfonos (principal y adicionales) con su valor actual; los teléfonos se ven ocultos (ej: ******4567)<br/>3. El usuario modifica el nombre (máximo 100 caracteres) y pulsa Guardar<br/>4. Para los teléfonos, el usuario puede: modificar un número (se edita a partir del número completo), agregar un número adicional (máximo 3 teléfonos en total) o eliminar un número adicional. El teléfono principal es obligatorio y no se puede eliminar. Cada cambio de teléfono se guarda al momento<br/>5. El sistema valida los datos con las mismas reglas del registro (teléfono: celular de 10 dígitos que empieza por 3, sin números repetidos)<br/>6. El sistema guarda los cambios. Con Cancelar se vuelve al perfil sin guardar el nombre |
 | **Diagrama de caso de uso**  | ![Diagrama RF-04](../uml/edit_profile.png)                                                                                                                            |
-| **Poscondiciones**           | *El perfil muestra los valores nuevos. Los campos no editables conservan su valor*                                                                                   |
+| **Poscondiciones**           | *El perfil muestra los valores nuevos. Los campos no editables conservan su valor. La cuenta conserva siempre un teléfono principal*                                  |
 
 ### 2.5 Requerimiento Funcional 5
 
@@ -106,7 +108,7 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Descripción**              | *El sistema debe permitir que el administrador desactive una cuenta por conflicto o mal uso de la plataforma.*                                                                                                      |
 | **Precondiciones**           | *El administrador está autenticado. La cuenta seleccionada existe y está Activa*                                                                                                                                    |
 | **Actor**                    | *Administrador*                                                                                                                                                                                                     |
-| **Flujo principal**          | 1. El administrador selecciona la cuenta<br/>2. El administrador solicita desactivarla<br/>3. El administrador ingresa el motivo (obligatorio)<br/>4. El sistema cambia el estado de la cuenta a Inactiva<br/>5. El sistema registra la acción (RNF-02) |
+| **Flujo principal**          | 1. El administrador selecciona la cuenta<br/>2. El administrador solicita desactivarla<br/>3. El administrador ingresa el motivo (obligatorio, entre 10 y 500 caracteres)<br/>4. El sistema cambia el estado de la cuenta a Inactiva<br/>5. El sistema registra la acción (RNF-02) |
 | **Diagrama de caso de uso**  | ![Diagrama RF-06](../uml/disable_user_admin.png)                                                                                                                                                                    |
 | **Poscondiciones**           | La cuenta está en estado Inactiva y existe un registro de la acción con su motivo                                                                                                                                   |
 
@@ -119,7 +121,7 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Descripción** | El sistema debe permitir que el administrador reactive una cuenta Inactiva |
 | **Precondiciones** | El administrador está autenticado. La cuenta seleccionada existe y está Inactiva |
 | **Actor** | Administrador |
-| **Flujo principal** | 1. El administrador selecciona la cuenta<br/>2. El administrador solicita reactivarla<br/>3. El administrador ingresa el motivo (obligatorio)<br/>4. El sistema cambia el estado de la cuenta a Activa<br/>5. El sistema registra la acción (RNF-02) |
+| **Flujo principal** | 1. El administrador selecciona la cuenta<br/>2. El administrador solicita reactivarla<br/>3. El administrador ingresa el motivo (obligatorio, entre 10 y 500 caracteres)<br/>4. El sistema cambia el estado de la cuenta a Activa<br/>5. El sistema registra la acción (RNF-02) |
 | **Diagrama de caso de uso** | ![Diagrama RF-07](../uml/enable_user_admin.png) |
 | **Poscondiciones** | La cuenta está en estado Activa, puede iniciar sesión y su perfil vuelve a ser consultable. Existe un registro de la acción con su motivo |
 

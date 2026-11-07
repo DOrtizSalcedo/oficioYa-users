@@ -12,6 +12,7 @@ import edu.eci.dosw.oficioya_users.exception.ForbiddenOperationException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
 import edu.eci.dosw.oficioya_users.mapper.UserEntityMapper;
 import edu.eci.dosw.oficioya_users.mapper.UserMapper;
+import edu.eci.dosw.oficioya_users.model.PhoneModel;
 import edu.eci.dosw.oficioya_users.model.RoleModel;
 import edu.eci.dosw.oficioya_users.model.UserModel;
 import edu.eci.dosw.oficioya_users.repository.RoleRepository;
@@ -21,8 +22,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +35,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
+
+    private static final int MAX_PHONES = 3;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -95,6 +101,54 @@ public class UserService {
         return userMapper.toOwn(save(user));
     }
 
+    /** RF-04: teléfonos completos del dueño, para editarlos */
+    @Transactional(readOnly = true)
+    public List<PhoneDTO> getOwnPhones(UUID userId) {
+        return userMapper.toPhoneDTOs(getActiveUser(userId).getPhones());
+    }
+
+    /** RF-04: agrega un teléfono adicional */
+    public List<PhoneDTO> addPhone(UUID userId, PhoneDTO request) {
+        UserModel user = getActiveUser(userId);
+        if (user.getPhones().size() >= MAX_PHONES) {
+            throw new BadRequestException("Se admiten máximo " + MAX_PHONES + " teléfonos");
+        }
+        checkNumberAvailable(user, request.getNumber(), null);
+
+        PhoneModel phone = new PhoneModel();
+        phone.setNumber(request.getNumber());
+        phone.setPrincipal(false);
+        List<PhoneModel> phones = new ArrayList<>(user.getPhones());
+        phones.add(phone);
+        user.setPhones(phones);
+        log.info("Teléfono adicional agregado a la cuenta {}", userId);
+        return userMapper.toPhoneDTOs(save(user).getPhones());
+    }
+
+    /** RF-04: cambia el número de un teléfono (principal o adicional) */
+    public List<PhoneDTO> updatePhone(UUID userId, UUID phoneId, PhoneDTO request) {
+        UserModel user = getActiveUser(userId);
+        PhoneModel phone = findPhone(user, phoneId);
+        checkNumberAvailable(user, request.getNumber(), phone);
+        phone.setNumber(request.getNumber());
+        log.info("Teléfono {} actualizado en la cuenta {}", phoneId, userId);
+        return userMapper.toPhoneDTOs(save(user).getPhones());
+    }
+
+    /** RF-04: elimina un teléfono adicional */
+    public List<PhoneDTO> removePhone(UUID userId, UUID phoneId) {
+        UserModel user = getActiveUser(userId);
+        PhoneModel phone = findPhone(user, phoneId);
+        if (phone.isPrincipal()) {
+            throw new BadRequestException("No se puede eliminar el teléfono principal");
+        }
+        List<PhoneModel> phones = new ArrayList<>(user.getPhones());
+        phones.remove(phone);
+        user.setPhones(phones);
+        log.info("Teléfono {} eliminado de la cuenta {}", phoneId, userId);
+        return userMapper.toPhoneDTOs(save(user).getPhones());
+    }
+
     /** RF-05 */
     @Transactional(readOnly = true)
     public UserResponseDTO getPublicProfile(UUID requesterId, UUID id) {
@@ -145,7 +199,13 @@ public class UserService {
     }
 
     private UserModel save(UserModel user) {
-        return userEntityMapper.toModel(userRepository.save(userEntityMapper.toEntity(user)));
+        UserModel saved = userEntityMapper.toModel(userRepository.save(userEntityMapper.toEntity(user)));
+        // Hibernate 6.5 (HHH-5855) puede repetir en memoria un teléfono nuevo al hacer merge; en BD queda una vez
+        Set<UUID> ids = new HashSet<>();
+        saved.setPhones(saved.getPhones().stream()
+                .filter(phone -> phone.getId() == null || ids.add(phone.getId()))
+                .toList());
+        return saved;
     }
 
     private RoleModel findRole(RoleName roleName) {
@@ -176,6 +236,19 @@ public class UserService {
         }
         if (phones.stream().map(PhoneDTO::getNumber).distinct().count() != phones.size()) {
             throw new BadRequestException("Hay números de teléfono repetidos");
+        }
+    }
+
+    private PhoneModel findPhone(UserModel user, UUID phoneId) {
+        return user.getPhones().stream()
+                .filter(phone -> phoneId.equals(phone.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Teléfono no encontrado: " + phoneId));
+    }
+
+    private void checkNumberAvailable(UserModel user, String number, PhoneModel excluded) {
+        if (user.getPhones().stream().anyMatch(phone -> phone != excluded && phone.getNumber().equals(number))) {
+            throw new ConflictException("Ese número ya está registrado en la cuenta");
         }
     }
 

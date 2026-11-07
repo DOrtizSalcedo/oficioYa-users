@@ -69,6 +69,14 @@ class UserServiceTest {
         return dto;
     }
 
+    private static PhoneEntity phone(String number, boolean principal) {
+        PhoneEntity phone = new PhoneEntity();
+        phone.setId(UUID.randomUUID());
+        phone.setNumber(number);
+        phone.setPrincipal(principal);
+        return phone;
+    }
+
     private static UserEntity user(AccountStatus status, String... roles) {
         UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
@@ -76,10 +84,7 @@ class UserServiceTest {
         user.setEmail("ana@mail.com");
         user.setAccountStatus(status);
         user.setCreatedAt(LocalDateTime.now());
-        PhoneEntity phone = new PhoneEntity();
-        phone.setNumber("3001234567");
-        phone.setPrincipal(true);
-        user.setPhones(List.of(phone));
+        user.setPhones(List.of(phone("3001234567", true)));
         Set<RoleEntity> set = new HashSet<>();
         for (String name : roles) {
             set.add(role(name));
@@ -189,12 +194,12 @@ class UserServiceTest {
         saveReturnsArgument();
         UserUpdateDTO request = new UserUpdateDTO();
         request.setName(" Ana María ");
-        request.setPhones(List.of(phoneDTO("3109876543", true), phoneDTO("12", false)));
+        request.setPhones(List.of(phoneDTO("3109876543", true), phoneDTO("3201112233", false)));
 
         UserResponseDTO result = userService.updateOwnProfile(user.getId(), request);
 
         assertThat(result.getName()).isEqualTo("Ana María");
-        assertThat(result.getPhones()).extracting(PhoneDTO::getNumber).containsExactly("******6543", "12");
+        assertThat(result.getPhones()).extracting(PhoneDTO::getNumber).containsExactly("******6543", "******2233");
     }
 
     @Test
@@ -204,6 +209,110 @@ class UserServiceTest {
         saveReturnsArgument();
 
         assertThat(userService.updateOwnProfile(user.getId(), new UserUpdateDTO()).getName()).isEqualTo("Ana Pérez");
+    }
+
+    @Test
+    void getOwnPhonesReturnsFullNumbers() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        List<PhoneDTO> result = userService.getOwnPhones(user.getId());
+
+        assertThat(result).extracting(PhoneDTO::getNumber).containsExactly("3001234567");
+        assertThat(result.get(0).getId()).isNotNull();
+    }
+
+    @Test
+    void addPhoneAddsAdditionalPhone() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        saveReturnsArgument();
+
+        List<PhoneDTO> result = userService.addPhone(user.getId(), phoneDTO("3109876543", true));
+
+        assertThat(result).extracting(PhoneDTO::isPrincipal).containsExactly(true, false);
+        assertThat(result).extracting(PhoneDTO::getNumber).containsExactly("3001234567", "3109876543");
+    }
+
+    @Test
+    void savedPhonesAreNotRepeated() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        // Simula el merge de Hibernate devolviendo el teléfono nuevo dos veces
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> {
+            UserEntity saved = invocation.getArgument(0);
+            PhoneEntity added = saved.getPhones().get(1);
+            added.setId(UUID.randomUUID());
+            saved.getPhones().add(added);
+            return saved;
+        });
+
+        List<PhoneDTO> result = userService.addPhone(user.getId(), phoneDTO("3109876543", false));
+
+        assertThat(result).extracting(PhoneDTO::getNumber).containsExactly("3001234567", "3109876543");
+    }
+
+    @Test
+    void addPhoneRejectsMoreThanThreePhones() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        user.setPhones(List.of(phone("3001234567", true), phone("3001111111", false), phone("3002222222", false)));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertStatus(() -> userService.addPhone(user.getId(), phoneDTO("3109876543", false)), HttpStatus.BAD_REQUEST);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void addPhoneRejectsRepeatedNumber() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertStatus(() -> userService.addPhone(user.getId(), phoneDTO("3001234567", false)), HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void updatePhoneChangesNumberAndKeepsPrincipal() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UUID phoneId = user.getPhones().get(0).getId();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        saveReturnsArgument();
+
+        List<PhoneDTO> result = userService.updatePhone(user.getId(), phoneId, phoneDTO("3109876543", false));
+
+        assertThat(result.get(0).getNumber()).isEqualTo("3109876543");
+        assertThat(result.get(0).isPrincipal()).isTrue();
+    }
+
+    @Test
+    void updatePhoneFailsWhenPhoneDoesNotExist() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertStatus(() -> userService.updatePhone(user.getId(), UUID.randomUUID(), phoneDTO("3109876543", false)),
+                HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void removePhoneDeletesAdditionalPhone() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        user.setPhones(List.of(phone("3001234567", true), phone("3001111111", false)));
+        UUID additionalId = user.getPhones().get(1).getId();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        saveReturnsArgument();
+
+        List<PhoneDTO> result = userService.removePhone(user.getId(), additionalId);
+
+        assertThat(result).extracting(PhoneDTO::getNumber).containsExactly("3001234567");
+    }
+
+    @Test
+    void removePhoneRejectsPrincipal() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        UUID principalId = user.getPhones().get(0).getId();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertStatus(() -> userService.removePhone(user.getId(), principalId), HttpStatus.BAD_REQUEST);
+        verify(userRepository, never()).save(any());
     }
 
     @Test

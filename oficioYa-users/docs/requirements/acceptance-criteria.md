@@ -30,7 +30,7 @@ Documentación de los endpoints en Swagger (`/swagger-ui.html`):
 | 3 | Un correo ya registrado (sin importar mayúsculas) | Intento registrarme con él | Recibo 409 |
 | 4 | — | Intento registrarme con el rol ADMIN | Recibo 400 |
 | 5 | — | Me registro con dos teléfonos principales | Recibo 400 |
-| 6 | — | Me registro con más de tres teléfonos o con datos inválidos | Recibo 400 |
+| 6 | — | Me registro con más de tres teléfonos o con datos inválidos (por ejemplo, un teléfono que no es un celular de 10 dígitos que empieza por 3) | Recibo 400 |
 
 ## RF-02 Agregar rol (`POST /api/v1/users/me/roles/{role}`)
 
@@ -55,6 +55,23 @@ Documentación de los endpoints en Swagger (`/swagger-ui.html`):
 | 1 | Un usuario activo | Cambia su nombre y sus teléfonos | Quedan guardados el nombre nuevo y solo los teléfonos nuevos; el correo no cambia |
 | 2 | Un usuario activo | Envía teléfonos sin uno principal | Recibe 400 |
 
+### Teléfonos del perfil propio (`/api/v1/users/me/phones`)
+
+Estos criterios están automatizados en [`UserServiceTest`](../../src/test/java/edu/eci/dosw/oficioya_users/service/UserServiceTest.java)
+y [`UserControllerTest`](../../src/test/java/edu/eci/dosw/oficioya_users/controller/UserControllerTest.java).
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 3 | Un usuario activo | Consulta sus teléfonos para editarlos (`GET`) | Recibe sus teléfonos completos (sin enmascarar) con su id |
+| 4 | Un usuario activo con menos de 3 teléfonos | Agrega un teléfono (`POST`) | Queda guardado como adicional |
+| 5 | Un usuario activo con 3 teléfonos | Agrega otro teléfono | Recibe 400 |
+| 6 | Un usuario activo | Agrega un número que ya tiene registrado | Recibe 409 |
+| 7 | Un usuario activo | Agrega un número que no es un celular de 10 dígitos que empieza por 3 | Recibe 400 con el mensaje "Ingrese un teléfono válido" |
+| 8 | Un usuario activo | Modifica el número de un teléfono (`PATCH /{phoneId}`) | Queda guardado el número nuevo y el teléfono conserva su tipo (principal o adicional) |
+| 9 | Un usuario activo | Modifica un teléfono que no existe | Recibe 404 |
+| 10 | Un usuario activo | Elimina un teléfono adicional (`DELETE /{phoneId}`) | El teléfono deja de estar en la cuenta |
+| 11 | Un usuario activo | Intenta eliminar el teléfono principal | Recibe 400 |
+
 ## RF-05 Consultar perfil público (`GET /api/v1/users/{id}`)
 
 | # | Dado | Cuando | Entonces |
@@ -72,6 +89,7 @@ Documentación de los endpoints en Swagger (`/swagger-ui.html`):
 | 3 | Una cuenta ya inactiva | El admin la vuelve a desactivar | Recibe 409 |
 | 4 | El administrador | Intenta desactivar su propia cuenta | Recibe 403 |
 | 5 | Un usuario que no es admin | Intenta desactivar una cuenta | Recibe 403 |
+| 6 | Un usuario activo | El admin lo desactiva con un motivo de menos de 10 caracteres | Recibe 400 (automatizado en `UserControllerTest`) |
 
 ## RF-07 Reactivar cuenta (`PATCH /api/v1/admin/users/{id}/activate`)
 

@@ -1,5 +1,6 @@
 package edu.eci.dosw.oficioya_users.controller;
 
+import edu.eci.dosw.oficioya_users.dto.PhoneDTO;
 import edu.eci.dosw.oficioya_users.dto.UserRequestDTO;
 import edu.eci.dosw.oficioya_users.dto.UserResponseDTO;
 import edu.eci.dosw.oficioya_users.dto.UserUpdateDTO;
@@ -50,6 +51,31 @@ public class UserController {
     @Operation(summary = "Agregar rol", description = "RF-02. Agrega el rol faltante a la misma cuenta")
     public UserResponseDTO addRole(@AuthenticationPrincipal UUID userId, @PathVariable RoleName role) {
         return userService.addRole(userId, role);
+    }
+
+    @GetMapping("/users/me/phones")
+    @Operation(summary = "Consultar teléfonos propios", description = "RF-04. Números completos para editarlos")
+    public List<PhoneDTO> getOwnPhones(@AuthenticationPrincipal UUID userId) {
+        return userService.getOwnPhones(userId);
+    }
+
+    @PostMapping("/users/me/phones")
+    @Operation(summary = "Agregar teléfono", description = "RF-04. Agrega un teléfono adicional (máximo 3 en total)")
+    public List<PhoneDTO> addPhone(@AuthenticationPrincipal UUID userId, @Valid @RequestBody PhoneDTO request) {
+        return userService.addPhone(userId, request);
+    }
+
+    @PatchMapping("/users/me/phones/{phoneId}")
+    @Operation(summary = "Cambiar número", description = "RF-04. Cambia el número de un teléfono propio")
+    public List<PhoneDTO> updatePhone(@AuthenticationPrincipal UUID userId, @PathVariable UUID phoneId,
+                                       @Valid @RequestBody PhoneDTO request) {
+        return userService.updatePhone(userId, phoneId, request);
+    }
+
+    @DeleteMapping("/users/me/phones/{phoneId}")
+    @Operation(summary = "Eliminar teléfono", description = "RF-04. El teléfono principal no se puede eliminar")
+    public List<PhoneDTO> removePhone(@AuthenticationPrincipal UUID userId, @PathVariable UUID phoneId) {
+        return userService.removePhone(userId, phoneId);
     }
 
     @GetMapping("/users/{id}")
