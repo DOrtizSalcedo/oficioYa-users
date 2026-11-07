@@ -23,15 +23,10 @@ El sistema de OficioYa debe tener:
 
 1. Correo y teléfono de trabajadores y contratantes deben estar ocultos para todos los usuarios (excepto para el administrador)
 2. El administrador tiene acceso a la información completa (incluso las ocultas) de un usuario
-3. Las acciones hechas por el administrador deben quedar registradas en el archivo log
-4. Cobertura de pruebas unitarios de mínimo del 80%
-5. El sistema debe registrar logs de cada generación y exportación de reporte
-6. Los campos obligatorios se marcan con `*` y los campos de texto muestran su longitud máxima (y mínima cuando aplica)
-7. Mientras el front carga la información o si el back no responde, se muestra un esqueleto de carga (rectángulos grises) en lugar de un mensaje de error suelto
-
-### 1.3 Criterios de aceptación
-
-Los criterios de aceptación de cada requerimiento funcional están en [Criterios de aceptación](./acceptance-criteria.md).
+3. Cobertura de pruebas unitarios de mínimo del 80%
+4. El sistema debe registrar logs de cada generación y exportación de reporte
+5. En el front, los campos obligatorios se marcan con `*` y los campos de texto muestran su longitud máxima (y mínima cuando aplica)
+6. Mientras el front carga la información o si el back no responde, se muestra un esqueleto de carga (rectángulos grises) en lugar de un mensaje de error suelto
 
 ## 2. Diagramas de caso de uso
 
