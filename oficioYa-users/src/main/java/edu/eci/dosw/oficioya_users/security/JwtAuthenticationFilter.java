@@ -2,6 +2,7 @@ package edu.eci.dosw.oficioya_users.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,15 +17,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final SecretKey key;
+    private final String rolesClaim;
 
-    public JwtAuthenticationFilter(String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    public JwtAuthenticationFilter(String secret, String rolesClaim) {
+        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.rolesClaim = rolesClaim;
     }
 
     @Override
@@ -36,9 +40,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = Jwts.parser().verifyWith(key).build()
                         .parseSignedClaims(header.substring(7)).getPayload();
                 UUID userId = UUID.fromString(claims.getSubject());
-                List<?> roles = claims.get("roles", List.class);
-                List<SimpleGrantedAuthority> authorities = roles == null ? List.of() : roles.stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                List<SimpleGrantedAuthority> authorities = roles(claims.get(rolesClaim)).stream()
+                        .map(role -> new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
                         .toList();
                 SecurityContextHolder.getContext()
                         .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, authorities));
@@ -47,5 +50,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private List<String> roles(Object value) {
+        if (value instanceof Collection<?> collection) {
+            return collection.stream().map(String::valueOf).toList();
+        }
+        return value instanceof String role ? List.of(role) : List.of();
     }
 }

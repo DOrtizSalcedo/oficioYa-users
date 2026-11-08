@@ -187,6 +187,14 @@ public class UserService {
         return userMapper.toAdmin(save(user));
     }
 
+    public void deleteById(UUID id) {
+        if (!userRepository.existsById(id)) {
+            throw notFound(id);
+        }
+        userRepository.deleteById(id);
+        log.info("Perfil {} eliminado por compensación del registro", id);
+    }
+
     // Persistencia
 
     private UserModel findUser(UUID id) {

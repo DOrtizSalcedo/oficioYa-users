@@ -434,4 +434,20 @@ class UserServiceTest {
         assertStatus(() -> userService.changeStatus(adminId, id, AccountStatus.INACTIVE, "Prueba"),
                 HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void deleteByIdRemovesExistingUser() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.existsById(id)).thenReturn(true);
+        userService.deleteById(id);
+        verify(userRepository).deleteById(id);
+    }
+
+    @Test
+    void deleteByIdMissingUserReturns404() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.existsById(id)).thenReturn(false);
+        assertStatus(() -> userService.deleteById(id), HttpStatus.NOT_FOUND);
+        verify(userRepository, never()).deleteById(any());
+    }
 }

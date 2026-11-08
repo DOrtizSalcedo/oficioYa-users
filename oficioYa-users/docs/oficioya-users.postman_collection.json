@@ -42,6 +42,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
               }
             ],
             "body": {
@@ -86,6 +90,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
               }
             ],
             "body": {
@@ -130,6 +138,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
               }
             ],
             "body": {
@@ -174,11 +186,63 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
               }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Ana Pérez\",\n  \"email\": \"admin{{$timestamp}}@mail.com\",\n  \"phones\": [\n    {\n      \"number\": \"3001234567\",\n      \"principal\": true\n    }\n  ],\n  \"roles\": [\n    \"ADMIN\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.1 Error: registrar sin rol SERVICE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Pérez\",\n  \"email\": \"sinservicio{{$timestamp}}@mail.com\",\n  \"phones\": [\n    {\n      \"number\": \"3001234567\",\n      \"principal\": true\n    }\n  ],\n  \"roles\": [\n    \"TRABAJADOR\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -872,6 +936,119 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Delete (compensación)",
+      "item": [
+        {
+          "name": "21. Error: admin intenta eliminar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "22. Eliminar perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "23. Error: perfil ya eliminado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "event": [
@@ -879,7 +1056,7 @@
       "listen": "prerequest",
       "script": {
         "exec": [
-          "// Genera tokens JWT (HS256) con la misma clave del .env (variable jwtSecret)",
+          "// Genera tokens JWT (HS256) con la misma clave del .env (variable jwtSecret, en Base64)",
           "function b64url(words) {",
           "    return CryptoJS.enc.Base64.stringify(words).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
           "}",
@@ -888,13 +1065,14 @@
           "    const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({",
           "        sub: sub, roles: roles, exp: Math.floor(Date.now() / 1000) + 3600",
           "    })));",
-          "    const signature = b64url(CryptoJS.HmacSHA256(header + '.' + payload, pm.collectionVariables.get('jwtSecret')));",
+          "    const signature = b64url(CryptoJS.HmacSHA256(header + '.' + payload, CryptoJS.enc.Base64.parse(pm.collectionVariables.get('jwtSecret'))));",
           "    return header + '.' + payload + '.' + signature;",
           "}",
           "const userId = pm.collectionVariables.get('userId') || '00000000-0000-0000-0000-000000000000';",
           "pm.collectionVariables.set('userToken', jwt(userId, ['TRABAJADOR']));",
           "const adminId = pm.collectionVariables.get('adminId') || '11111111-1111-1111-1111-111111111111';",
-                "pm.collectionVariables.set('adminToken', jwt(adminId, ['ADMIN']));"
+          "pm.collectionVariables.set('adminToken', jwt(adminId, ['ADMIN']));",
+          "pm.collectionVariables.set('serviceToken', jwt('22222222-2222-2222-2222-222222222222', ['SERVICE']));"
         ],
         "type": "text/javascript"
       }
@@ -939,6 +1117,10 @@
     },
     {
       "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "serviceToken",
       "value": ""
     }
   ]
