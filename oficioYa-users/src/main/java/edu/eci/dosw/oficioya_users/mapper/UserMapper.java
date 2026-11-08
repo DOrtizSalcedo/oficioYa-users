@@ -8,6 +8,7 @@ import edu.eci.dosw.oficioya_users.model.UserModel;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -35,7 +36,7 @@ public class UserMapper {
     public UserResponseDTO toOwn(UserModel user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(maskEmail(user.getEmail()));
-        dto.setPhones(user.getPhones().stream().map(p -> phoneDTO(maskPhone(p.getNumber()), p.isPrincipal())).toList());
+        dto.setPhones(user.getPhones().stream().map(p -> phoneDTO(p.getId(), maskPhone(p.getNumber()), p.isPrincipal())).toList());
         dto.setAccountStatus(user.getAccountStatus());
         dto.setCreatedAt(user.getCreatedAt());
         return dto;
@@ -45,15 +46,21 @@ public class UserMapper {
     public UserResponseDTO toAdmin(UserModel user) {
         UserResponseDTO dto = toPublic(user);
         dto.setEmail(user.getEmail());
-        dto.setPhones(user.getPhones().stream().map(p -> phoneDTO(p.getNumber(), p.isPrincipal())).toList());
+        dto.setPhones(toPhoneDTOs(user.getPhones()));
         dto.setAccountStatus(user.getAccountStatus());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
         return dto;
     }
 
-    private PhoneDTO phoneDTO(String number, boolean principal) {
+    /** Teléfonos sin enmascarar: para el admin y para que el dueño los edite */
+    public List<PhoneDTO> toPhoneDTOs(List<PhoneModel> phones) {
+        return phones.stream().map(p -> phoneDTO(p.getId(), p.getNumber(), p.isPrincipal())).toList();
+    }
+
+    private PhoneDTO phoneDTO(UUID id, String number, boolean principal) {
         PhoneDTO dto = new PhoneDTO();
+        dto.setId(id);
         dto.setNumber(number);
         dto.setPrincipal(principal);
         return dto;

@@ -4,10 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class PhoneDTO {
+    // Solo de respuesta: identifica el teléfono para editarlo o eliminarlo
+    private UUID id;
+
     @NotBlank(message = "El número es obligatorio")
-    @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "El número debe tener entre 7 y 15 dígitos")
+    @Pattern(regexp = "^3[0-9]{9}$", message = "Ingrese un teléfono válido")
     private String number;
 
     private boolean principal;

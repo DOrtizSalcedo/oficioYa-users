@@ -43,7 +43,7 @@
 		<jacoco.version>0.8.14</jacoco.version>
 		<springdoc.version>2.6.0</springdoc.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<sonar.coverage.exclusions>**/OficioyaUsersApplication.java,**/dto/**,**/entity/**,**/model**</sonar.coverage.exclusions>
+		<sonar.coverage.exclusions>**/OficioyaUsersApplication.java,**/dto/**,**/entity/**,**/model/**</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
