@@ -27,12 +27,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Prueba los endpoints con la seguridad JWT real (filtro + reglas de acceso). */
@@ -58,7 +60,7 @@ class UserControllerTest {
                 .subject(subject)
                 .claim("roles", roles)
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))
-                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
+                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
     }
 
@@ -195,15 +197,15 @@ class UserControllerTest {
         inactive.setAccountStatus(AccountStatus.INACTIVE);
         UserResponseDTO active = response("Ana");
         active.setAccountStatus(AccountStatus.ACTIVE);
-        when(userService.changeStatus(userId, id, AccountStatus.INACTIVE, "Mal uso")).thenReturn(inactive);
-        when(userService.changeStatus(userId, id, AccountStatus.ACTIVE, "Resuelto")).thenReturn(active);
+        when(userService.changeStatus(userId, id, AccountStatus.INACTIVE, "Mal uso de la plataforma")).thenReturn(inactive);
+        when(userService.changeStatus(userId, id, AccountStatus.ACTIVE, "Caso resuelto con el usuario")).thenReturn(active);
 
         mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", id).header(AUTH, token("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Mal uso\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Mal uso de la plataforma\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
         mockMvc.perform(patch("/api/v1/admin/users/{id}/activate", id).header(AUTH, token("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Resuelto\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Caso resuelto con el usuario\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"));
     }
@@ -213,8 +215,55 @@ class UserControllerTest {
         mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", UUID.randomUUID()).header(AUTH, token("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"  \"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("reason: El motivo es obligatorio"));
+                .andExpect(jsonPath("$.message").value(containsString("reason: El motivo es obligatorio")));
         verifyNoInteractions(userService);
+    }
+
+    @Test
+    void deactivateWithShortReasonReturns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", UUID.randomUUID()).header(AUTH, token("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Corto\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("reason: El motivo debe tener entre 10 y 500 caracteres"));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void addPhoneWithLettersReturns400() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"300abc4567\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void addPhoneThatIsNotAColombianCellphoneReturns400() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"6011234567\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("number: Ingrese un teléfono válido"));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void phoneEndpointsUseIdFromToken() throws Exception {
+        UUID phoneId = UUID.randomUUID();
+        when(userService.getOwnPhones(userId)).thenReturn(List.of());
+        when(userService.addPhone(eq(userId), any())).thenReturn(List.of());
+        when(userService.updatePhone(eq(userId), eq(phoneId), any())).thenReturn(List.of());
+        when(userService.removePhone(userId, phoneId)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"3109876543\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/users/me/phones/{id}", phoneId).header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"3109876543\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/users/me/phones/{id}", phoneId).header(AUTH, token("TRABAJADOR")))
+                .andExpect(status().isOk());
     }
 
     @Test

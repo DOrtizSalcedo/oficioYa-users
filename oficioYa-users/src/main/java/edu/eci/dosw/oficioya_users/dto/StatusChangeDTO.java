@@ -7,6 +7,6 @@ import lombok.Data;
 @Data
 public class StatusChangeDTO {
     @NotBlank(message = "El motivo es obligatorio")
-    @Size(max = 500, message = "El motivo solo puede tener como máximo 500 caracteres")
+    @Size(min = 10, max = 500, message = "El motivo debe tener entre 10 y 500 caracteres")
     private String reason;
 }

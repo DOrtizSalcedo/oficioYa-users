@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,8 +17,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    ObjectMapper objectMapper,
-                                                   @Value("${jwt.secret}") String secret,
-                                                   @Value("${jwt.roles-claim}") String rolesClaim) throws Exception {
+                                                   @Value("${jwt.secret}") String secret) throws Exception {
         JsonSecurityErrorHandler errorHandler = new JsonSecurityErrorHandler(objectMapper);
 
         return http
@@ -35,7 +33,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(secret, rolesClaim), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(secret), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

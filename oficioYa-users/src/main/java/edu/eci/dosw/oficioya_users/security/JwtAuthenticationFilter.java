@@ -27,7 +27,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final String rolesClaim;
 
     public JwtAuthenticationFilter(String secret, String rolesClaim) {
-        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.rolesClaim = rolesClaim;
     }
 
