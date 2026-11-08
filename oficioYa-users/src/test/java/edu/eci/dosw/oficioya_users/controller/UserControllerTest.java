@@ -55,17 +55,17 @@ class UserControllerTest {
 
     private final UUID userId = UUID.randomUUID();
 
-    private static String bearer(String subject, Object roles, String secret, long ttlMillis) {
+    private static String bearer(String subject, String role, String secret, long ttlMillis) {
         return "Bearer " + Jwts.builder()
                 .subject(subject)
-                .claim("roles", roles)
+                .claim("roles", role)
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();
     }
 
-    private String token(Object roles) {
-        return bearer(userId.toString(), roles, SECRET, 60_000);
+    private String token(String role) {
+        return bearer(userId.toString(), role, SECRET, 60_000);
     }
 
     private static UserResponseDTO response(String name) {
@@ -119,12 +119,19 @@ class UserControllerTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Basic dXNlcjpwYXNz"))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer " + Jwts.builder()
+                        .subject(userId.toString())
+                        .claim("roles", List.of("ADMIN"))
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                        .compact()))
+                .andExpect(status().isUnauthorized());
         verifyNoInteractions(userService);
     }
 
     @Test
     void nonAdminCannotUseAdminEndpoints() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("TRABAJADOR"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(null)))
                 .andExpect(status().isForbidden());
@@ -182,7 +189,7 @@ class UserControllerTest {
         when(userService.findAll()).thenReturn(List.of(response("Ana")));
         when(userService.findById(id)).thenReturn(response("Luis"));
 
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("ROLE_ADMIN"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("ROLE_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Ana"));
         mockMvc.perform(get("/api/v1/admin/users/{id}", id).header(AUTH, token("ADMIN")))
@@ -277,7 +284,7 @@ class UserControllerTest {
 
     @Test
     void forbiddenResponseUsesApiErrorFormat() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("TRABAJADOR"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"));
