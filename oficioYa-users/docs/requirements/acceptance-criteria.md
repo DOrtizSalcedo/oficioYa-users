@@ -1,4 +1,4 @@
-# ✅ Criterios de aceptación del microservicio de usuarios
+# Criterios de aceptación del microservicio de usuarios
 
 Cada requerimiento funcional tiene sus criterios en formato **Dado / Cuando / Entonces**. Todos están automatizados en
 [`UserAcceptanceTest`](../../src/test/java/edu/eci/dosw/oficioya_users/acceptance/UserAcceptanceTest.java), que levanta la
@@ -23,14 +23,16 @@ Documentación de los endpoints en Swagger (`/swagger-ui.html`):
 
 ## RF-01 Registrar cuenta (`POST /api/v1/users`)
 
-| # | Dado | Cuando | Entonces |
-|---|------|--------|----------|
-| 1 | Un correo que no está registrado | Me registro con nombre, un teléfono principal y el rol CONTRATANTE | Recibo 201 y la cuenta queda Activa con ese rol y el correo enmascarado |
-| 2 | Un correo que no está registrado | Me registro como TRABAJADOR y CONTRATANTE | La cuenta tiene ambos roles |
-| 3 | Un correo ya registrado (sin importar mayúsculas) | Intento registrarme con él | Recibo 409 |
-| 4 | — | Intento registrarme con el rol ADMIN | Recibo 400 |
-| 5 | — | Me registro con dos teléfonos principales | Recibo 400 |
-| 6 | — | Me registro con más de tres teléfonos o con datos inválidos (por ejemplo, un teléfono que no es un celular de 10 dígitos que empieza por 3) | Recibo 400 |
+| # | Dado                                              | Cuando                                                                                                                                      | Entonces                                                                |
+|---|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| 1 | Un correo que no está registrado                  | Me registro con nombre, un teléfono principal y el rol CONTRATANTE                                                                          | Recibo 201 y la cuenta queda Activa con ese rol y el correo enmascarado |
+| 2 | Un correo que no está registrado                  | Me registro como TRABAJADOR y CONTRATANTE                                                                                                   | La cuenta tiene ambos roles                                             |
+| 3 | Un correo ya registrado (sin importar mayúsculas) | Intento registrarme con él                                                                                                                  | Recibo 409                                                              |
+| 4 | —                                                 | Intento registrarme con el rol ADMIN                                                                                                        | Recibo 400                                                              |
+| 5 | —                                                 | Me registro con dos teléfonos principales                                                                                                   | Recibo 400                                                              |
+| 6 | —                                                 | Me registro con más de tres teléfonos o con datos inválidos (por ejemplo, un teléfono que no es un celular de 10 dígitos que empieza por 3) | Recibo 400                                                              |
+| 7 | —                                                 | Intento registrarme sin token o con un token que no es SERVICE                                                                              | Recibo 401 o 403                                                        |
+| 8 | Un perfil creado cuyo registro falló en Identity  | Identity pide eliminarlo (`DELETE /api/v1/users/{id}`) con token SERVICE                                                                    | Recibo 204 y el perfil deja de existir; con otro rol recibo 403         |
 
 ## RF-02 Agregar rol (`POST /api/v1/users/me/roles/{role}`)
 

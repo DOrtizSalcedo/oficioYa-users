@@ -17,14 +17,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    ObjectMapper objectMapper,
-                                                   @Value("${jwt.secret}") String secret) throws Exception {
+                                                   @Value("${jwt.secret}") String secret,
+                                                   @Value("${jwt.roles-claim}") String rolesClaim) throws Exception {
         JsonSecurityErrorHandler errorHandler = new JsonSecurityErrorHandler(objectMapper);
 
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("SERVICE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/{id}").hasRole("SERVICE")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
@@ -32,7 +34,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(secret), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(secret, rolesClaim), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

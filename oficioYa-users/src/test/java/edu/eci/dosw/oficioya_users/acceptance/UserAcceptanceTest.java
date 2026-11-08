@@ -3,6 +3,7 @@ package edu.eci.dosw.oficioya_users.acceptance;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -83,7 +84,7 @@ class UserAcceptanceTest {
         @Test
         @DisplayName("Dado un correo nuevo, cuando me registro con datos válidos, entonces la cuenta queda activa con el rol elegido")
         void registersActiveAccount() throws Exception {
-            mockMvc.perform(json(post(USERS), registerBody("Ana", "ana.rf01@mail.com", "CONTRATANTE")))
+            mockMvc.perform(registerRequest(registerBody("Ana", "ana.rf01@mail.com", "CONTRATANTE")))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.id").exists())
                     .andExpect(jsonPath("$.name").value("Ana"))
@@ -95,7 +96,7 @@ class UserAcceptanceTest {
         @Test
         @DisplayName("Dado un correo nuevo, cuando me registro como trabajador y contratante, entonces la cuenta tiene ambos roles")
         void registersWithBothRoles() throws Exception {
-            mockMvc.perform(json(post(USERS), registerBody("Luis", "luis.rf01@mail.com", "TRABAJADOR", "CONTRATANTE")))
+            mockMvc.perform(registerRequest(registerBody("Luis", "luis.rf01@mail.com", "TRABAJADOR", "CONTRATANTE")))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.roles", containsInAnyOrder("TRABAJADOR", "CONTRATANTE")));
         }
@@ -105,14 +106,14 @@ class UserAcceptanceTest {
         void rejectsDuplicatedEmail() throws Exception {
             register("Ana", "repetido.rf01@mail.com", "CONTRATANTE");
 
-            mockMvc.perform(json(post(USERS), registerBody("Otra", "REPETIDO.rf01@mail.com", "TRABAJADOR")))
+            mockMvc.perform(registerRequest(registerBody("Otra", "REPETIDO.rf01@mail.com", "TRABAJADOR")))
                     .andExpect(status().isConflict());
         }
 
         @Test
         @DisplayName("Cuando intento registrarme con el rol ADMIN, entonces recibo 400")
         void rejectsAdminRole() throws Exception {
-            mockMvc.perform(json(post(USERS), registerBody("Eva", "eva.rf01@mail.com", "ADMIN")))
+            mockMvc.perform(registerRequest(registerBody("Eva", "eva.rf01@mail.com", "ADMIN")))
                     .andExpect(status().isBadRequest());
         }
 
@@ -124,7 +125,7 @@ class UserAcceptanceTest {
                      "phones":[{"number":"3001111111","principal":true},{"number":"3002222222","principal":true}],
                      "roles":["TRABAJADOR"]}""";
 
-            mockMvc.perform(json(post(USERS), body)).andExpect(status().isBadRequest());
+            mockMvc.perform(registerRequest(body)).andExpect(status().isBadRequest());
         }
 
         @Test
@@ -136,8 +137,8 @@ class UserAcceptanceTest {
                                {"number":"3003333333","principal":false},{"number":"3004444444","principal":false}],
                      "roles":["TRABAJADOR"]}""";
 
-            mockMvc.perform(json(post(USERS), tooManyPhones)).andExpect(status().isBadRequest());
-            mockMvc.perform(json(post(USERS), "{\"name\":\"\",\"email\":\"no-es-correo\",\"phones\":[],\"roles\":[]}"))
+            mockMvc.perform(registerRequest(tooManyPhones)).andExpect(status().isBadRequest());
+            mockMvc.perform(registerRequest("{\"name\":\"\",\"email\":\"no-es-correo\",\"phones\":[],\"roles\":[]}"))
                     .andExpect(status().isBadRequest());
         }
     }
@@ -422,12 +423,12 @@ class UserAcceptanceTest {
 
     // Utilidades
 
-    private String token(UUID userId, String... roles) {
+    private String token(UUID userId, String role) {
         return "Bearer " + Jwts.builder()
                 .subject(userId.toString())
-                .claim("roles", List.of(roles))
+                .claim("roles", role)
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();
     }
 
@@ -443,7 +444,7 @@ class UserAcceptanceTest {
     }
 
     private UUID register(String name, String email, String... roles) throws Exception {
-        String body = mockMvc.perform(json(post(USERS), registerBody(name, email, roles)))
+        String body = mockMvc.perform(registerRequest(registerBody(name, email, roles)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return UUID.fromString(objectMapper.readTree(body).get("id").asText());
@@ -452,5 +453,9 @@ class UserAcceptanceTest {
     private ResultActions changeStatus(UUID userId, String action) throws Exception {
         return mockMvc.perform(json(patch(ADMIN_USERS + "/" + userId + "/" + action).header(AUTH, token(adminId, "ADMIN")),
                 "{\"reason\":\"Prueba de aceptación\"}"));
+    }
+
+    private MockHttpServletRequestBuilder registerRequest(String body) {
+        return json(post(USERS), body).header(AUTH, token(UUID.randomUUID(), "SERVICE"));
     }
 }

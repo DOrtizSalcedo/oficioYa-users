@@ -34,6 +34,13 @@ public class UserController {
         return userService.register(request);
     }
 
+    @DeleteMapping("/users/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Eliminar perfil", description = "Compensación del registro [Orquestador]")
+    public void delete(@PathVariable UUID id) {
+        userService.deleteById(id);
+    }
+
     @GetMapping("/users/me")
     @Operation(summary = "Consultar perfil propio", description = "RF-03. Correo y teléfono enmascarados")
     public UserResponseDTO getOwnProfile(@AuthenticationPrincipal UUID userId) {
