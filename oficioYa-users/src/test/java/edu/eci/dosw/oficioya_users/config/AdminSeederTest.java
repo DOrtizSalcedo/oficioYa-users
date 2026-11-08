@@ -15,7 +15,7 @@ import org.springframework.boot.CommandLineRunner;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -75,9 +75,8 @@ class AdminSeederTest {
     void failsWhenPhoneIsMissing() {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
 
-        assertThatThrownBy(() -> runner(EMAIL, " ").run())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("ADMIN_PHONE");
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> runner(EMAIL, " ").run());
+        assertThat(exception.getMessage()).contains("ADMIN_PHONE");
         verify(userRepository, never()).save(any());
     }
 
@@ -86,8 +85,7 @@ class AdminSeederTest {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(roleRepository.findByName("ADMIN")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> runner(EMAIL, "3000000000").run())
-                .isInstanceOf(IllegalStateException.class);
+        assertThrows(IllegalStateException.class, () -> runner(EMAIL, "3000000000").run());
         verify(userRepository, never()).save(any());
     }
 }

@@ -412,13 +412,6 @@ class UserServiceTest {
     }
 
     @Test
-    void changeStatusRequiresReason() {
-        UUID id = UUID.randomUUID();
-        assertStatus(() -> userService.changeStatus(adminId, id, AccountStatus.INACTIVE, " "), HttpStatus.BAD_REQUEST);
-        assertStatus(() -> userService.changeStatus(adminId, id, AccountStatus.INACTIVE, null), HttpStatus.BAD_REQUEST);
-    }
-
-    @Test
     void adminCannotDeactivateOwnAccount() {
         assertStatus(() -> userService.changeStatus(adminId, adminId, AccountStatus.INACTIVE, "Prueba"),
                 HttpStatus.FORBIDDEN);

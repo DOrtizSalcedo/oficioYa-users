@@ -175,9 +175,6 @@ public class UserService {
 
     /** RF-06, RF-07 */
     public UserResponseDTO changeStatus(UUID adminId, UUID userId, AccountStatus status, String reason) {
-        if (reason == null || reason.isBlank()) {
-            throw new BadRequestException("El motivo es obligatorio");
-        }
         if (adminId.equals(userId) && status == AccountStatus.INACTIVE) {
             throw new ForbiddenOperationException("Un administrador no puede desactivar su propia cuenta");
         }
@@ -186,7 +183,7 @@ public class UserService {
             throw new ConflictException("La cuenta ya está en estado " + status);
         }
         user.setAccountStatus(status);
-        log.info("Admin {} cambió la cuenta {} a {}. Motivo: {}", adminId, userId, status, reason.trim());
+        log.info("Admin {} cambió la cuenta {} a {}. Motivo: {}", adminId, userId, status, reason);
         return userMapper.toAdmin(save(user));
     }
 

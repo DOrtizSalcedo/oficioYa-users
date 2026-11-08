@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DataJpaTest
 class UserRepositoryTest {
@@ -93,7 +93,6 @@ class UserRepositoryTest {
     void emailMustBeUnique() {
         newUser("ana@mail.com", AccountStatus.ACTIVE);
 
-        assertThatThrownBy(() -> newUser("ana@mail.com", AccountStatus.ACTIVE))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThrows(DataIntegrityViolationException.class, () -> newUser("ana@mail.com", AccountStatus.ACTIVE));
     }
 }
