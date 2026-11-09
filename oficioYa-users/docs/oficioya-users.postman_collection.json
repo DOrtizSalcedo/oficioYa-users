@@ -704,6 +704,379 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "15.1 Consultar teléfonos propios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const phones = pm.response.json();",
+                  "pm.test('Números completos (sin enmascarar)', () => phones.forEach(p => pm.expect(p.number).to.match(/^3\\d{9}$/)));",
+                  "pm.test('Hay un teléfono principal', () => pm.expect(phones.filter(p => p.principal)).to.have.lengthOf(1));",
+                  "pm.collectionVariables.set('principalPhoneId', phones.find(p => p.principal).id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.2 Error: agregar número repetido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"3109876543\",\n  \"principal\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.3 Error: agregar teléfono no colombiano",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"12345\",\n  \"principal\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.4 Agregar teléfono",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const added = pm.response.json().find(p => p.number === '3157778888');",
+                  "pm.test('El teléfono nuevo es adicional', () => { pm.expect(added).to.exist; pm.expect(added.principal).to.be.false; });",
+                  "pm.collectionVariables.set('additionalPhoneId', added.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"3157778888\",\n  \"principal\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.5 Error: agregar un cuarto teléfono",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"3001112222\",\n  \"principal\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.6 Cambiar número",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Número actualizado', () => pm.expect(pm.response.json().map(p => p.number)).to.include('3159990000'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones/{{additionalPhoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones",
+                "{{additionalPhoneId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"3159990000\",\n  \"principal\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.7 Error: eliminar teléfono principal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones/{{principalPhoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones",
+                "{{principalPhoneId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15.8 Eliminar teléfono adicional",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ya no aparece', () => pm.expect(pm.response.json().map(p => p.id)).to.not.include(pm.collectionVariables.get('additionalPhoneId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/phones/{{additionalPhoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "phones",
+                "{{additionalPhoneId}}"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -1060,19 +1433,19 @@
           "function b64url(words) {",
           "    return CryptoJS.enc.Base64.stringify(words).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
           "}",
-          "function jwt(sub, roles) {",
+          "function jwt(sub, role) {",
           "    const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));",
           "    const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({",
-          "        sub: sub, roles: roles, exp: Math.floor(Date.now() / 1000) + 3600",
+          "        sub: sub, roles: role, exp: Math.floor(Date.now() / 1000) + 3600",
           "    })));",
           "    const signature = b64url(CryptoJS.HmacSHA256(header + '.' + payload, CryptoJS.enc.Base64.parse(pm.collectionVariables.get('jwtSecret'))));",
           "    return header + '.' + payload + '.' + signature;",
           "}",
           "const userId = pm.collectionVariables.get('userId') || '00000000-0000-0000-0000-000000000000';",
-          "pm.collectionVariables.set('userToken', jwt(userId, ['TRABAJADOR']));",
+          "pm.collectionVariables.set('userToken', jwt(userId, 'TRABAJADOR'));",
           "const adminId = pm.collectionVariables.get('adminId') || '11111111-1111-1111-1111-111111111111';",
-          "pm.collectionVariables.set('adminToken', jwt(adminId, ['ADMIN']));",
-          "pm.collectionVariables.set('serviceToken', jwt('22222222-2222-2222-2222-222222222222', ['SERVICE']));"
+          "pm.collectionVariables.set('adminToken', jwt(adminId, 'ADMIN'));",
+          "pm.collectionVariables.set('serviceToken', jwt('22222222-2222-2222-2222-222222222222', 'SERVICE'));"
         ],
         "type": "text/javascript"
       }
@@ -1121,6 +1494,14 @@
     },
     {
       "key": "serviceToken",
+      "value": ""
+    },
+    {
+      "key": "principalPhoneId",
+      "value": ""
+    },
+    {
+      "key": "additionalPhoneId",
       "value": ""
     }
   ]

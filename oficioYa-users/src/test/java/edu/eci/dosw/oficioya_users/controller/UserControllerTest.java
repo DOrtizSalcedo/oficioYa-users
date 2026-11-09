@@ -198,6 +198,14 @@ class UserControllerTest {
     }
 
     @Test
+    void roleWithPrefixIsAcceptedAsIs() throws Exception {
+        when(userService.findAll()).thenReturn(List.of(response("Ana")));
+
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("ROLE_ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void adminDeactivatesAndActivatesWithReason() throws Exception {
         UUID id = UUID.randomUUID();
         UserResponseDTO inactive = response("Ana");
