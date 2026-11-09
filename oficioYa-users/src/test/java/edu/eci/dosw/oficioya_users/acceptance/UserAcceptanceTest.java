@@ -423,10 +423,10 @@ class UserAcceptanceTest {
 
     // Utilidades
 
-    private String token(UUID userId, String... roles) {
+    private String token(UUID userId, String role) {
         return "Bearer " + Jwts.builder()
                 .subject(userId.toString())
-                .claim("roles", List.of(roles))
+                .claim("roles", role)
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();

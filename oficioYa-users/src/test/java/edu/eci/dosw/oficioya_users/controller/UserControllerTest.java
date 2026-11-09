@@ -7,7 +7,6 @@ import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.exception.ConflictException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
-import io.jsonwebtoken.io.Decoders;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import edu.eci.dosw.oficioya_users.security.SecurityConfig;
 import edu.eci.dosw.oficioya_users.service.UserService;
@@ -27,11 +26,15 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,7 +56,7 @@ class UserControllerTest {
 
     private final UUID userId = UUID.randomUUID();
 
-    private static String bearer(String subject, Object roles, String secret, long ttlMillis) {
+    private static String bearer(String subject, List<String> roles, String secret, long ttlMillis) {
         return "Bearer " + Jwts.builder()
                 .subject(subject)
                 .claim("roles", roles)
@@ -62,8 +65,8 @@ class UserControllerTest {
                 .compact();
     }
 
-    private String token(Object roles) {
-        return bearer(userId.toString(), roles, SECRET, 60_000);
+    private String token(String... roles) {
+        return bearer(userId.toString(), List.of(roles), SECRET, 60_000);
     }
 
     private static UserResponseDTO response(String name) {
@@ -92,12 +95,12 @@ class UserControllerTest {
     void invalidTokensReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer token.invalido"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), "ADMIN", SECRET, -60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), List.of("ADMIN"), SECRET, -60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me")
-                        .header(AUTH, bearer(userId.toString(), "ADMIN", "rxl3eEuJLIOl0IYbwSy6RvQbtxX5ZahEsooK5QPmol0=", 60_000)))
+                        .header(AUTH, bearer(userId.toString(), List.of("ADMIN"), "otra-clave-distinta-de-al-menos-32-caracteres", 60_000)))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", "ADMIN", SECRET, 60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", List.of("ADMIN"), SECRET, 60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Basic dXNlcjpwYXNz"))
                 .andExpect(status().isUnauthorized());
@@ -106,9 +109,9 @@ class UserControllerTest {
 
     @Test
     void nonAdminCannotUseAdminEndpoints() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("TRABAJADOR"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(null)))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token()))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(userService);
     }
@@ -164,7 +167,7 @@ class UserControllerTest {
         when(userService.findAll()).thenReturn(List.of(response("Ana")));
         when(userService.findById(id)).thenReturn(response("Luis"));
 
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("ROLE_ADMIN"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Ana"));
         mockMvc.perform(get("/api/v1/admin/users/{id}", id).header(AUTH, token("ADMIN")))
@@ -179,15 +182,15 @@ class UserControllerTest {
         inactive.setAccountStatus(AccountStatus.INACTIVE);
         UserResponseDTO active = response("Ana");
         active.setAccountStatus(AccountStatus.ACTIVE);
-        when(userService.changeStatus(userId, id, AccountStatus.INACTIVE, "Mal uso")).thenReturn(inactive);
-        when(userService.changeStatus(userId, id, AccountStatus.ACTIVE, "Resuelto")).thenReturn(active);
+        when(userService.changeStatus(userId, id, AccountStatus.INACTIVE, "Mal uso de la plataforma")).thenReturn(inactive);
+        when(userService.changeStatus(userId, id, AccountStatus.ACTIVE, "Caso resuelto con el usuario")).thenReturn(active);
 
         mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", id).header(AUTH, token("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Mal uso\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Mal uso de la plataforma\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
         mockMvc.perform(patch("/api/v1/admin/users/{id}/activate", id).header(AUTH, token("ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Resuelto\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Caso resuelto con el usuario\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"));
     }
@@ -197,8 +200,55 @@ class UserControllerTest {
         mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", UUID.randomUUID()).header(AUTH, token("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"  \"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("reason: El motivo es obligatorio"));
+                .andExpect(jsonPath("$.message").value(containsString("reason: El motivo es obligatorio")));
         verifyNoInteractions(userService);
+    }
+
+    @Test
+    void deactivateWithShortReasonReturns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/users/{id}/deactivate", UUID.randomUUID()).header(AUTH, token("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Corto\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("reason: El motivo debe tener entre 10 y 500 caracteres"));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void addPhoneWithLettersReturns400() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"300abc4567\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void addPhoneThatIsNotAColombianCellphoneReturns400() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"6011234567\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("number: Ingrese un teléfono válido"));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void phoneEndpointsUseIdFromToken() throws Exception {
+        UUID phoneId = UUID.randomUUID();
+        when(userService.getOwnPhones(userId)).thenReturn(List.of());
+        when(userService.addPhone(eq(userId), any())).thenReturn(List.of());
+        when(userService.updatePhone(eq(userId), eq(phoneId), any())).thenReturn(List.of());
+        when(userService.removePhone(userId, phoneId)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/users/me/phones").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"3109876543\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/users/me/phones/{id}", phoneId).header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"number\":\"3109876543\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/users/me/phones/{id}", phoneId).header(AUTH, token("TRABAJADOR")))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -212,7 +262,7 @@ class UserControllerTest {
 
     @Test
     void forbiddenResponseUsesApiErrorFormat() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(List.of("TRABAJADOR"))))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"));

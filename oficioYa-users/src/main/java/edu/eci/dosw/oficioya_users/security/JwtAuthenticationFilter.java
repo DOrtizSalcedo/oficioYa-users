@@ -17,7 +17,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,9 +39,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = Jwts.parser().verifyWith(key).build()
                         .parseSignedClaims(header.substring(7)).getPayload();
                 UUID userId = UUID.fromString(claims.getSubject());
-                List<SimpleGrantedAuthority> authorities = roles(claims.get(rolesClaim)).stream()
-                        .map(role -> new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
-                        .toList();
+                String role = claims.get(rolesClaim, String.class);
+                List<SimpleGrantedAuthority> authorities = role == null ? List.of()
+                        : List.of(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role));
                 SecurityContextHolder.getContext()
                         .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, authorities));
             } catch (RuntimeException e) {
@@ -50,12 +49,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
-    }
-
-    private List<String> roles(Object value) {
-        if (value instanceof Collection<?> collection) {
-            return collection.stream().map(String::valueOf).toList();
-        }
-        return value instanceof String role ? List.of(role) : List.of();
     }
 }

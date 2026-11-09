@@ -17,7 +17,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    ObjectMapper objectMapper,
-                                                   @Value("${jwt.secret}") String secret) throws Exception {
+                                                   @Value("${jwt.secret}") String secret,
+                                                   @Value("${jwt.roles-claim}") String rolesClaim) throws Exception {
         JsonSecurityErrorHandler errorHandler = new JsonSecurityErrorHandler(objectMapper);
 
         return http
@@ -33,7 +34,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(secret), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(secret, rolesClaim), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }
