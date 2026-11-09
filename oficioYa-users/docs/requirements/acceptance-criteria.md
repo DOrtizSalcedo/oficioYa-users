@@ -13,7 +13,8 @@ mvn test -Dtest=UserAcceptanceTest
 ## Evidencias
 
 Además de las pruebas automatizadas, la [colección de Postman](../oficioya-users.postman_collection.json) recorre los mismos
-requerimientos con 20 peticiones. Ejecutada completa (*Run collection*), pasan las 40 pruebas:
+requerimientos con 32 peticiones, incluidos los endpoints de teléfonos y los que usa Identity (rol `SERVICE`).
+Ejecutada completa (*Run collection*), pasan las 64 pruebas:
 
 ![Ejecución de la colección de Postman](../evidencias/postman-run.png)
 

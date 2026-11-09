@@ -81,6 +81,15 @@ class AdminSeederTest {
     }
 
     @Test
+    void failsWhenPhoneIsNull() {
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> runner(EMAIL, null).run());
+        assertThat(exception.getMessage()).contains("ADMIN_PHONE");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void failsWhenAdminRoleIsNotSeeded() {
         when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(roleRepository.findByName("ADMIN")).thenReturn(Optional.empty());

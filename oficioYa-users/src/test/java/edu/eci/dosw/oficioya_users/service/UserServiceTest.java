@@ -418,6 +418,16 @@ class UserServiceTest {
     }
 
     @Test
+    void adminActivatingOwnActiveAccountIsConflict() {
+        UserEntity admin = user(AccountStatus.ACTIVE, "ADMIN");
+        admin.setId(adminId);
+        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+
+        assertStatus(() -> userService.changeStatus(adminId, adminId, AccountStatus.ACTIVE, "Prueba"),
+                HttpStatus.CONFLICT);
+    }
+
+    @Test
     void changeStatusToSameStatusIsConflict() {
         UserEntity user = user(AccountStatus.ACTIVE);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
