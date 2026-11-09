@@ -7,6 +7,7 @@ import edu.eci.dosw.oficioya_users.enums.AccountStatus;
 import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.exception.ConflictException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
+import io.jsonwebtoken.io.Decoders;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import edu.eci.dosw.oficioya_users.security.SecurityConfig;
 import edu.eci.dosw.oficioya_users.service.UserService;
@@ -31,11 +32,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Prueba los endpoints con la seguridad JWT real (filtro + reglas de acceso). */
@@ -43,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = "jwt.secret=" + UserControllerTest.SECRET)
 class UserControllerTest {
-    static final String SECRET = "clave-de-pruebas-unitarias-con-minimo-32-caracteres";
+    static final String SECRET = "IadhiSp/AVyloXuE15l29oZzpucys4NEfqpHn6PEMeQ=";
     private static final String AUTH = "Authorization";
     private static final String REGISTER_BODY = """
             {"name":"Ana","email":"ana@mail.com",
@@ -56,17 +55,17 @@ class UserControllerTest {
 
     private final UUID userId = UUID.randomUUID();
 
-    private static String bearer(String subject, List<String> roles, String secret, long ttlMillis) {
+    private static String bearer(String subject, String role, String secret, long ttlMillis) {
         return "Bearer " + Jwts.builder()
                 .subject(subject)
-                .claim("roles", roles)
+                .claim("roles", role)
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();
     }
 
-    private String token(String... roles) {
-        return bearer(userId.toString(), List.of(roles), SECRET, 60_000);
+    private String token(String role) {
+        return bearer(userId.toString(), role, SECRET, 60_000);
     }
 
     private static UserResponseDTO response(String name) {
@@ -76,13 +75,29 @@ class UserControllerTest {
     }
 
     @Test
-    void registerIsPublic() throws Exception {
+    void registerRequiresServiceRole() throws Exception {
         when(userService.register(any(UserRequestDTO.class))).thenReturn(response("Ana"));
 
         mockMvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON).content(REGISTER_BODY))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/users").header(AUTH, token("TRABAJADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content(REGISTER_BODY))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/users").header(AUTH, token("SERVICE"))
+                        .contentType(MediaType.APPLICATION_JSON).content(REGISTER_BODY))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Ana"))
                 .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    @Test
+    void deleteOnlyAllowedForService() throws Exception {
+        UUID id = UUID.randomUUID();
+        mockMvc.perform(delete("/api/v1/users/{id}", id).header(AUTH, token("ADMIN")))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(userService);
+        mockMvc.perform(delete("/api/v1/users/{id}", id).header(AUTH, token("SERVICE")))
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -95,14 +110,21 @@ class UserControllerTest {
     void invalidTokensReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer token.invalido"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), List.of("ADMIN"), SECRET, -60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), "ADMIN", SECRET, -60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me")
-                        .header(AUTH, bearer(userId.toString(), List.of("ADMIN"), "otra-clave-distinta-de-al-menos-32-caracteres", 60_000)))
+                        .header(AUTH, bearer(userId.toString(), "ADMIN", "rxl3eEuJLIOl0IYbwSy6RvQbtxX5ZahEsooK5QPmol0=", 60_000)))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", List.of("ADMIN"), SECRET, 60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", "ADMIN", SECRET, 60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Basic dXNlcjpwYXNz"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer " + Jwts.builder()
+                        .subject(userId.toString())
+                        .claim("roles", List.of("ADMIN"))
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                        .compact()))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(userService);
     }
@@ -111,14 +133,14 @@ class UserControllerTest {
     void nonAdminCannotUseAdminEndpoints() throws Exception {
         mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token()))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(null)))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(userService);
     }
 
     @Test
     void registerWithInvalidDataReturns400() throws Exception {
-        mockMvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/users").header(AUTH, token("SERVICE")).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\",\"email\":\"no-es-correo\",\"phones\":[],\"roles\":[]}"))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(userService);
@@ -280,7 +302,7 @@ class UserControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Usuario no encontrado: " + missing));
-        mockMvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON).content(REGISTER_BODY))
+        mockMvc.perform(post("/api/v1/users").header(AUTH, token("SERVICE")).contentType(MediaType.APPLICATION_JSON).content(REGISTER_BODY))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ya existe una cuenta con ese correo"));
     }
@@ -290,7 +312,7 @@ class UserControllerTest {
         mockMvc.perform(get("/api/v1/users/no-es-uuid").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
-        mockMvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/users").header(AUTH, token("SERVICE")).contentType(MediaType.APPLICATION_JSON)
                         .content(REGISTER_BODY.replace("TRABAJADOR", "JEFE")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Cuerpo de la petición inválido"));
