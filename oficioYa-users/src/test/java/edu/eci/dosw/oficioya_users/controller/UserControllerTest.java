@@ -135,6 +135,12 @@ class UserControllerTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token()))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, "Bearer " + Jwts.builder()
+                        .subject(userId.toString())
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                        .compact()))
+                .andExpect(status().isForbidden());
         verifyNoInteractions(userService);
     }
 
