@@ -19,7 +19,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -423,10 +422,10 @@ class UserAcceptanceTest {
 
     // Utilidades
 
-    private String token(UUID userId, String role) {
+    private String token(UUID userId, String... roles) {
         return "Bearer " + Jwts.builder()
                 .subject(userId.toString())
-                .claim("roles", role)
+                .claim("roles", List.of(roles))
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();
