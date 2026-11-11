@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-08).
+ * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-09).
  * Los criterios están documentados en docs/requirements/acceptance-criteria.md.
  */
 @SpringBootTest
@@ -52,6 +52,7 @@ class UserAcceptanceTest {
     private static final String ME = USERS + "/me";
     private static final String ADMIN_USERS = "/api/v1/admin/users";
     private static final String ADMIN_EMAIL = "admin@oficioya.com";
+    private static final String ZONES = "/api/v1/zones";
 
     @Autowired
     private MockMvc mockMvc;
@@ -417,6 +418,42 @@ class UserAcceptanceTest {
 
             mockMvc.perform(get(ADMIN_USERS + "/" + id).header(AUTH, token(id, "TRABAJADOR")))
                     .andExpect(status().isForbidden());
+        }
+    }
+
+    // RF-09
+
+    @Nested
+    @DisplayName("RF-09 Consultar el catálogo de zonas")
+    class Zones {
+
+        @Test
+        @DisplayName("Sin token, cuando consulto las zonas, entonces recibo los 25 barrios ordenados por id")
+        void listsWholeCatalogWithoutToken() throws Exception {
+            mockMvc.perform(get(ZONES))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(25)))
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].name").value("Cedritos"))
+                    .andExpect(jsonPath("$[0].locality").value("Usaquén"))
+                    .andExpect(jsonPath("$[24].name").value("Bosa Centro"));
+        }
+
+        @Test
+        @DisplayName("Dados unos ids, cuando los consulto, entonces recibo solo las zonas que existen, sin repetidas")
+        void returnsOnlyExistingZones() throws Exception {
+            mockMvc.perform(get(ZONES).param("ids", "13,2,2,999"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].name").value("Santa Bárbara"))
+                    .andExpect(jsonPath("$[1].name").value("Teusaquillo"));
+        }
+
+        @Test
+        @DisplayName("Cuando envío un id que no es número, entonces recibo 400")
+        void invalidIdReturns400() throws Exception {
+            mockMvc.perform(get(ZONES).param("ids", "uno"))
+                    .andExpect(status().isBadRequest());
         }
     }
 

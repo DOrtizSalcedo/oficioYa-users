@@ -13,8 +13,8 @@ mvn test -Dtest=UserAcceptanceTest
 ## Evidencias
 
 Además de las pruebas automatizadas, la [colección de Postman](../oficioya-users.postman_collection.json) recorre los mismos
-requerimientos con 32 peticiones, incluidos los endpoints de teléfonos y los que usa Identity (rol `SERVICE`).
-Ejecutada completa (*Run collection*), pasan las 64 pruebas:
+requerimientos con 35 peticiones, incluidos los endpoints de teléfonos, los que usa Identity (rol `SERVICE`) y el catálogo de zonas.
+Ejecutada completa (*Run collection*), pasan las 73 pruebas:
 
 ![Ejecución de la colección de Postman](../evidencias/postman-run.png)
 
@@ -109,3 +109,21 @@ y [`UserControllerTest`](../../src/test/java/edu/eci/dosw/oficioya_users/control
 | 2 | Cuentas registradas | El admin lista los usuarios | Aparecen las cuentas registradas |
 | 3 | Un id que no existe | El admin lo consulta | Recibe 404 |
 | 4 | Un usuario que no es admin | Consulta la información completa | Recibe 403 |
+
+## RF-09 Consultar el catálogo de zonas (`GET /api/v1/zones`)
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 1 | — | Consulto las zonas sin token | Recibo 200 con los 25 barrios (id, nombre y localidad) ordenados por id |
+| 2 | Unos ids, algunos repetidos o inexistentes (`?ids=13,2,2,999`) | Los consulto | Recibo solo las zonas que existen, sin repetidas y ordenadas por id |
+| 3 | — | Envío un id que no es número | Recibo 400 |
+| 4 | Más de 50 ids distintos | Los consulto | Recibo 400 (automatizado en `ZoneServiceTest` y `ZoneControllerTest`) |
+
+## RF-10 Consultar varios usuarios a la vez (`GET /api/v1/users?ids=…`)
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 1 | Cuentas activas | Las consulto por sus ids con cualquier rol (incluido `SERVICE`) | Recibo sus datos públicos |
+| 2 | Una cuenta inactiva o un id que no existe | Lo incluyo en los ids | No aparece en la respuesta |
+| 3 | Más de 50 ids | Los consulto | Recibo 400 |
+| 4 | — | Consulto sin token | Recibo 401 |

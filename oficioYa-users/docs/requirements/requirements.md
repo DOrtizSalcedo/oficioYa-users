@@ -16,6 +16,8 @@ El sistema de OficioYa debe tener la capacidad de:
 6. El administrador puede desactivar una cuenta si sucede algún conflicto o mal uso de los servicios que ofrece la página web
 7. El administrador es capaz de reactivar una cuenta cuando el estado de la cuenta de un usuario esté inactivo
 8. El administrador consulta el perfil de una cuenta 
+9. Consultar el catálogo de zonas (barrios) donde los trabajadores ofrecen sus servicios
+10. Otros microservicios consultan el nombre y la foto de varios usuarios a la vez
 
 ### 1.2 Requerimientos no funcionales
 
@@ -136,3 +138,27 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Flujo principal**          | 1. El administrador selecciona la cuenta desde el listado de usuarios, donde el correo se ve oculto (ej: *****@ejemplo.com)<br/>2. El sistema muestra todos los datos de la cuenta, con el correo completo<br/> |
 | **Diagrama de caso de uso**  | ![Diagrama RF-08](../uml/query_user_admin.png)                                                                                                                                                                  |
 | **Poscondiciones**           | El administrador ve todos los datos de la cuenta, incluidos los ocultos                                                                                                                                         |
+
+### 2.9 Requerimiento Funcional 9
+
+| Campo                        | Descripción                                                                                                                                                                                                                     |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **ID**                       | RF-09                                                                                                                                                                                                                           |
+| **Nombre del requerimiento** | Consultar el catálogo de zonas                                                                                                                                                                                                  |
+| **Descripción**              | El sistema debe ofrecer el catálogo de barrios de Bogotá (id, nombre y localidad de referencia) para que el front arme el selector de zona y el microservicio de Trabajadores valide las zonas que guarda (`GET /api/v1/zones`)  |
+| **Precondiciones**           | Ninguna. El catálogo es público y no requiere token                                                                                                                                                                             |
+| **Actor**                    | Visitante, usuario o microservicio de Trabajadores                                                                                                                                                                              |
+| **Flujo principal**          | 1. El front o el microservicio pide el catálogo completo, o solo algunas zonas enviando sus ids (`?ids=1,2`, máximo 50)<br/>2. El sistema devuelve las zonas ordenadas por id. Si se enviaron ids, devuelve solo las que existen, sin repetidas |
+| **Poscondiciones**           | Quien consulta conoce las zonas. Comparando cuántos ids pidió con cuántas zonas recibió sabe si todas existen. El catálogo no cambia                                                                                             |
+
+### 2.10 Requerimiento Funcional 10
+
+| Campo                        | Descripción                                                                                                                                                                                       |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **ID**                       | RF-10                                                                                                                                                                                             |
+| **Nombre del requerimiento** | Consultar varios usuarios a la vez                                                                                                                                                                |
+| **Descripción**              | El sistema debe permitir consultar el nombre y la foto de varios usuarios en una sola petición (`GET /api/v1/users?ids=…`), por ejemplo para mostrar las tarjetas de trabajadores o para que Identidad lea los roles al iniciar sesión |
+| **Precondiciones**           | Quien consulta está autenticado (cualquier rol, incluido `SERVICE`)                                                                                                                              |
+| **Actor**                    | Front, microservicio de Trabajadores o de Identidad                                                                                                                                               |
+| **Flujo principal**          | 1. Se envían los ids de los usuarios (máximo 50)<br/>2. El sistema devuelve solo las cuentas Activas que existen                                                                                 |
+| **Poscondiciones**           | Quien consulta recibe los datos públicos de las cuentas activas. Las cuentas inactivas o inexistentes no aparecen                                                                                 |
