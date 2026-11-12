@@ -8,7 +8,6 @@ import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.exception.ConflictException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
 import io.jsonwebtoken.io.Decoders;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import edu.eci.dosw.oficioya_users.security.SecurityConfig;
 import edu.eci.dosw.oficioya_users.service.UserService;
 import io.jsonwebtoken.Jwts;
@@ -22,7 +21,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -127,6 +125,15 @@ class UserControllerTest {
                         .compact()))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(userService);
+    }
+    
+    @Test
+    void tokenWithNonUuidSubjectReturns401() throws Exception {
+        String token = bearer("123", "CONTRATANTE",  SECRET, 60_000);
+
+        mockMvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", token))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
