@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private static final int MAX_PHONES = 3;
+    private static final int MAX_IDS = 50;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -157,6 +158,19 @@ public class UserService {
                 .map(userEntityMapper::toModel)
                 .map(userMapper::toPublic)
                 .orElseThrow(() -> notFound(id));
+    }
+
+    /** RF-10 */
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> findPublicByIds(List<UUID> ids) {
+        Set<UUID> unique = new HashSet<>(ids);
+        if (unique.size() > MAX_IDS) {
+            throw new BadRequestException("Se pueden consultar máximo " + MAX_IDS + " usuarios por petición");
+        }
+        return userRepository.findByIdInAndAccountStatus(unique, AccountStatus.ACTIVE).stream()
+                .map(userEntityMapper::toModel)
+                .map(userMapper::toPublic)
+                .toList();
     }
 
     @Transactional(readOnly = true)

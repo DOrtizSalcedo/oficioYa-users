@@ -190,6 +190,29 @@ class UserControllerTest {
     }
 
     @Test
+    void usersByIdsAllowsServiceRole() throws Exception {
+        UUID otherId = UUID.randomUUID();
+        when(userService.findPublicByIds(List.of(otherId))).thenReturn(List.of(response("Luis")));
+
+        mockMvc.perform(get("/api/v1/users").param("ids", otherId.toString()).header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Luis"));
+    }
+
+    @Test
+    void usersByIdsWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(get("/api/v1/users").param("ids", UUID.randomUUID().toString()))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void usersByIdsWithInvalidIdReturns400() throws Exception {
+        mockMvc.perform(get("/api/v1/users").param("ids", "uno").header(AUTH, token("SERVICE")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void adminListsAndSeesUsers() throws Exception {
         UUID id = UUID.randomUUID();
         when(userService.findAll()).thenReturn(List.of(response("Ana")));
