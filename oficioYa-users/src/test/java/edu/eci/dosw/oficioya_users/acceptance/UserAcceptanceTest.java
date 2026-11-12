@@ -19,10 +19,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-08).
+ * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-10).
  * Los criterios están documentados en docs/requirements/acceptance-criteria.md.
  */
 @SpringBootTest
@@ -53,6 +54,7 @@ class UserAcceptanceTest {
     private static final String ME = USERS + "/me";
     private static final String ADMIN_USERS = "/api/v1/admin/users";
     private static final String ADMIN_EMAIL = "admin@oficioya.com";
+    private static final String ZONES = "/api/v1/zones";
 
     @Autowired
     private MockMvc mockMvc;
@@ -421,12 +423,88 @@ class UserAcceptanceTest {
         }
     }
 
+    // RF-09
+
+    @Nested
+    @DisplayName("RF-09 Consultar el catálogo de zonas")
+    class Zones {
+
+        @Test
+        @DisplayName("Sin token, cuando consulto las zonas, entonces recibo los 25 barrios ordenados por id")
+        void listsWholeCatalogWithoutToken() throws Exception {
+            mockMvc.perform(get(ZONES))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(25)))
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].name").value("Cedritos"))
+                    .andExpect(jsonPath("$[0].locality").value("Usaquén"))
+                    .andExpect(jsonPath("$[24].name").value("Bosa Centro"));
+        }
+
+        @Test
+        @DisplayName("Dados unos ids, cuando los consulto, entonces recibo solo las zonas que existen, sin repetidas")
+        void returnsOnlyExistingZones() throws Exception {
+            mockMvc.perform(get(ZONES).param("ids", "13,2,2,999"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].name").value("Santa Bárbara"))
+                    .andExpect(jsonPath("$[1].name").value("Teusaquillo"));
+        }
+
+        @Test
+        @DisplayName("Cuando envío un id que no es número, entonces recibo 400")
+        void invalidIdReturns400() throws Exception {
+            mockMvc.perform(get(ZONES).param("ids", "uno"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    // RF-10
+
+    @Nested
+    @DisplayName("RF-10 Consultar varios usuarios a la vez")
+    class UsersByIds {
+
+        @Test
+        @DisplayName("Dadas una cuenta activa, una inactiva y un id que no existe, cuando las consulto con rol SERVICE, entonces recibo solo los datos públicos de la activa")
+        void returnsOnlyActiveUsers() throws Exception {
+            UUID active = register("Sara", "sara.rf10@mail.com", "TRABAJADOR");
+            UUID inactive = register("Omar", "omar.rf10@mail.com", "TRABAJADOR");
+            changeStatus(inactive, "deactivate");
+            String ids = active + "," + inactive + "," + UUID.randomUUID();
+
+            mockMvc.perform(get(USERS).param("ids", ids).header(AUTH, token(UUID.randomUUID(), "SERVICE")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].id").value(active.toString()))
+                    .andExpect(jsonPath("$[0].name").value("Sara"))
+                    .andExpect(jsonPath("$[0].email").doesNotExist())
+                    .andExpect(jsonPath("$[0].phones").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("Dados más de 50 ids, cuando los consulto, entonces recibo 400")
+        void rejectsMoreThanFiftyIds() throws Exception {
+            String ids = Stream.generate(() -> UUID.randomUUID().toString()).limit(51).collect(Collectors.joining(","));
+
+            mockMvc.perform(get(USERS).param("ids", ids).header(AUTH, token(adminId, "ADMIN")))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Sin token, cuando consulto varios usuarios, entonces recibo 401")
+        void requiresToken() throws Exception {
+            mockMvc.perform(get(USERS).param("ids", UUID.randomUUID().toString()))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
     // Utilidades
 
-    private String token(UUID userId, String role) {
+    private String token(UUID userId, String... roles) {
         return "Bearer " + Jwts.builder()
                 .subject(userId.toString())
-                .claim("roles", role)
+                .claim("roles", List.of(roles))
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();

@@ -41,6 +41,12 @@ public class UserController {
         userService.deleteById(id);
     }
 
+    @GetMapping("/users")
+    @Operation(summary = "Consultar varios usuarios", description = "RF-10. Datos públicos de las cuentas activas (máximo 50 ids)")
+    public List<UserResponseDTO> findByIds(@RequestParam(defaultValue = "") List<UUID> ids) {
+        return userService.findPublicByIds(ids);
+    }
+
     @GetMapping("/users/me")
     @Operation(summary = "Consultar perfil propio", description = "RF-03. Correo y teléfono enmascarados")
     public UserResponseDTO getOwnProfile(@AuthenticationPrincipal UUID userId) {

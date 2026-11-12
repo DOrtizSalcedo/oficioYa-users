@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
     private final SecretKey key;
     private final String rolesClaim;
 
@@ -37,12 +38,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = Jwts.parser().verifyWith(key).build()
                         .parseSignedClaims(header.substring(7)).getPayload();
                 UUID userId = UUID.fromString(claims.getSubject());
-                String role = claims.get(rolesClaim, String.class);
-                List<SimpleGrantedAuthority> authorities = role == null ? List.of()
-                        : List.of(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role));
+                List<?> roles = claims.get(rolesClaim, List.class);
+                List<SimpleGrantedAuthority> authorities = roles == null ? List.of() : roles.stream()
+                        .map(String::valueOf)
+                        .map(role -> new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                        .toList();
                 SecurityContextHolder.getContext()
                         .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, authorities));
-            } catch (RuntimeException e) {
+            } catch (RuntimeException exception) {
                 SecurityContextHolder.clearContext();
             }
         }
