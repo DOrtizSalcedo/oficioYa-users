@@ -375,6 +375,50 @@
           "response": []
         },
         {
+          "name": "7.1 Consultar varios usuarios (rol SERVICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Solo la cuenta que existe', () => pm.expect(res.length).to.eql(1));",
+                  "pm.test('Sin correo ni teléfonos', () => { pm.expect(res[0].email).to.be.undefined; pm.expect(res[0].phones).to.be.undefined; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?ids={{userId}},99999999-9999-9999-9999-999999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{userId}},99999999-9999-9999-9999-999999999999"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "8. Error: usuario no existe",
           "event": [
             {

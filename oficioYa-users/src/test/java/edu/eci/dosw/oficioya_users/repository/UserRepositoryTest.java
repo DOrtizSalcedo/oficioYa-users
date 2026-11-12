@@ -13,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -70,6 +71,17 @@ class UserRepositoryTest {
 
         assertThat(userRepository.findByIdAndAccountStatus(active.getId(), AccountStatus.ACTIVE)).isPresent();
         assertThat(userRepository.findByIdAndAccountStatus(inactive.getId(), AccountStatus.ACTIVE)).isEmpty();
+    }
+
+    @Test
+    void findByIdInAndAccountStatusReturnsOnlyActiveUsers() {
+        UserEntity active = newUser("activo@mail.com", AccountStatus.ACTIVE);
+        UserEntity inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
+
+        List<UserEntity> found = userRepository.findByIdInAndAccountStatus(
+                List.of(active.getId(), inactive.getId(), UUID.randomUUID()), AccountStatus.ACTIVE);
+
+        assertThat(found).extracting(UserEntity::getId).containsExactly(active.getId());
     }
 
     @Test

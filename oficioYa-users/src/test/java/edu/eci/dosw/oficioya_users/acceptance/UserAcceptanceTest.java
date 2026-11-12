@@ -22,6 +22,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
@@ -33,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-09).
+ * Pruebas de aceptación: recorren cada requisito funcional (RF-01 a RF-10).
  * Los criterios están documentados en docs/requirements/acceptance-criteria.md.
  */
 @SpringBootTest
@@ -454,6 +456,46 @@ class UserAcceptanceTest {
         void invalidIdReturns400() throws Exception {
             mockMvc.perform(get(ZONES).param("ids", "uno"))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    // RF-10
+
+    @Nested
+    @DisplayName("RF-10 Consultar varios usuarios a la vez")
+    class UsersByIds {
+
+        @Test
+        @DisplayName("Dadas una cuenta activa, una inactiva y un id que no existe, cuando las consulto con rol SERVICE, entonces recibo solo los datos públicos de la activa")
+        void returnsOnlyActiveUsers() throws Exception {
+            UUID active = register("Sara", "sara.rf10@mail.com", "TRABAJADOR");
+            UUID inactive = register("Omar", "omar.rf10@mail.com", "TRABAJADOR");
+            changeStatus(inactive, "deactivate");
+            String ids = active + "," + inactive + "," + UUID.randomUUID();
+
+            mockMvc.perform(get(USERS).param("ids", ids).header(AUTH, token(UUID.randomUUID(), "SERVICE")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].id").value(active.toString()))
+                    .andExpect(jsonPath("$[0].name").value("Sara"))
+                    .andExpect(jsonPath("$[0].email").doesNotExist())
+                    .andExpect(jsonPath("$[0].phones").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("Dados más de 50 ids, cuando los consulto, entonces recibo 400")
+        void rejectsMoreThanFiftyIds() throws Exception {
+            String ids = Stream.generate(() -> UUID.randomUUID().toString()).limit(51).collect(Collectors.joining(","));
+
+            mockMvc.perform(get(USERS).param("ids", ids).header(AUTH, token(adminId, "ADMIN")))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Sin token, cuando consulto varios usuarios, entonces recibo 401")
+        void requiresToken() throws Exception {
+            mockMvc.perform(get(USERS).param("ids", UUID.randomUUID().toString()))
+                    .andExpect(status().isUnauthorized());
         }
     }
 
