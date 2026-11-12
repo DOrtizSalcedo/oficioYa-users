@@ -126,7 +126,7 @@ class UserControllerTest {
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(userService);
     }
-    
+
     @Test
     void tokenWithNonUuidSubjectReturns401() throws Exception {
         String token = bearer("123", "CONTRATANTE",  SECRET, 60_000);
