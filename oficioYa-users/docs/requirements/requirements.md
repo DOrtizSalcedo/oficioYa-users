@@ -17,7 +17,8 @@ El sistema de OficioYa debe tener la capacidad de:
 7. El administrador es capaz de reactivar una cuenta cuando el estado de la cuenta de un usuario esté inactivo
 8. El administrador consulta el perfil de una cuenta 
 9. Consultar el catálogo de zonas (barrios) donde los trabajadores ofrecen sus servicios
-10. Otros microservicios consultan el nombre y la foto de varios usuarios a la vez
+10. Otros microservicios consultan el nombre y rol(es) de varios usuarios a la vez
+11. Otros microservicios pueden consultar una cuenta de un usuario, ya sea por correo u id y su estado (activa o inactiva)
 
 ### 1.2 Requerimientos no funcionales
 
@@ -162,3 +163,15 @@ Los criterios de aceptación de cada requerimiento funcional están en [Criterio
 | **Actor**                    | Front, microservicio de Trabajadores o de Identidad                                                                                                                                               |
 | **Flujo principal**          | 1. Se envían los ids de los usuarios (máximo 50)<br/>2. El sistema devuelve solo las cuentas Activas que existen                                                                                 |
 | **Poscondiciones**           | Quien consulta recibe los datos públicos de las cuentas activas. Las cuentas inactivas o inexistentes no aparecen                                                                                 |
+
+### 2.11 Requerimiento Funcional 11
+
+| Campo                        | Descripción |
+|------------------------------|-------------|
+| **ID**                       | RF-11 |
+| **Nombre del requerimiento** | Consultar la cuenta de un usuario (uso interno entre microservicios) |
+| **Descripción**              | El sistema debe permitir a otros microservicios consultar la cuenta completa de un usuario por su correo o por su id, por ejemplo para que Identidad valide que la cuenta existe y está activa. Devuelve id, nombre, correo, teléfonos, roles y estado de la cuenta |
+| **Precondiciones**           | Quien consulta se autentica con un token de rol `SERVICE` |
+| **Actor**                    | Microservicio de Identidad |
+| **Flujo principal**          | 1. Se envía el correo (sin importar mayúsculas ni espacios) o el id<br/>2. El sistema busca la cuenta, esté Activa o Inactiva<br/>3. El sistema devuelve sus datos completos |
+| **Poscondiciones**           | Quien consulta conoce el estado de la cuenta. El correo no se expone a otros roles |

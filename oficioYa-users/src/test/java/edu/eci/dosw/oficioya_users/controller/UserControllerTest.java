@@ -129,11 +129,51 @@ class UserControllerTest {
 
     @Test
     void tokenWithNonUuidSubjectReturns401() throws Exception {
-        String token = bearer("123", "CONTRATANTE",  SECRET, 60_000);
+        String token = bearer("123", List.of("CONTRATANTE"),  SECRET, 60_000);
 
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", token))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void accountQueriesAllowServiceRole() throws Exception {
+        UUID id = UUID.randomUUID();
+        UserResponseDTO dto = response("Ana");
+        dto.setEmail("ana@mail.com");
+        dto.setAccountStatus(AccountStatus.INACTIVE);
+        when(userService.findByEmail("ana@mail.com")).thenReturn(dto);
+        when(userService.findById(id)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com").header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ana@mail.com"))
+                .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
+        mockMvc.perform(get("/api/v1/users/{id}/account", id).header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
+    }
+
+    @Test
+    void accountQueriesAreOnlyForService() throws Exception {
+        UUID id = UUID.randomUUID();
+        for (String role : List.of("ADMIN", "CONTRATANTE", "TRABAJADOR")) {
+            mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com").header(AUTH, token(role)))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/v1/users/{id}/account", id).header(AUTH, token(role)))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void accountQueryOfMissingUserReturns404() throws Exception {
+        when(userService.findByEmail("nadie@mail.com")).thenThrow(new ResourceNotFoundException("Usuario no encontrado"));
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "nadie@mail.com").header(AUTH, token("SERVICE")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
