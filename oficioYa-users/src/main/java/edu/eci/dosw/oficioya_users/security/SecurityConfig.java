@@ -27,6 +27,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/{id}").hasRole("SERVICE")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/by-email").hasRole("SERVICE")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/{id}/account").hasRole("SERVICE")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/zones").permitAll()

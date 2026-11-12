@@ -485,4 +485,23 @@ class UserServiceTest {
         assertStatus(() -> userService.deleteById(id), HttpStatus.NOT_FOUND);
         verify(userRepository, never()).deleteById(any());
     }
+
+    @Test
+    void findByEmailReturnsFullAccountIgnoringCaseAndSpaces() {
+        UserEntity user = user(AccountStatus.INACTIVE, "TRABAJADOR");
+        when(userRepository.findByEmail("ana@mail.com")).thenReturn(Optional.of(user));
+
+        UserResponseDTO found = userService.findByEmail("  Ana@Mail.com ");
+
+        assertThat(found.getId()).isEqualTo(user.getId());
+        assertThat(found.getEmail()).isEqualTo("ana@mail.com");
+        assertThat(found.getAccountStatus()).isEqualTo(AccountStatus.INACTIVE);
+        assertThat(found.getRoles()).containsExactly("TRABAJADOR");
+    }
+
+    @Test
+    void findByEmailFailsWhenMissingOrBlank() {
+        assertStatus(() -> userService.findByEmail("nadie@mail.com"), HttpStatus.NOT_FOUND);
+        assertStatus(() -> userService.findByEmail("  "), HttpStatus.NOT_FOUND);
+    }
 }

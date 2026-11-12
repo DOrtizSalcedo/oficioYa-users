@@ -122,4 +122,16 @@ public class UserController {
                                     @Valid @RequestBody StatusChangeDTO request) {
         return userService.changeStatus(adminId, id, AccountStatus.ACTIVE, request.getReason());
     }
+
+    @GetMapping("/users/by-email")
+    @Operation(summary = "Consultar cuenta por correo", description = "RF-11. Solo el rol SERVICE")
+    public UserResponseDTO findByEmail(@RequestParam(defaultValue = "") String email) {
+        return userService.findByEmail(email);
+    }
+
+    @GetMapping("/users/{id}/account")
+    @Operation(summary = "Consultar cuenta por id", description = "RF-11. Solo el rol SERVICE")
+    public UserResponseDTO findAccount(@PathVariable UUID id) {
+        return userService.findById(id);
+    }
 }

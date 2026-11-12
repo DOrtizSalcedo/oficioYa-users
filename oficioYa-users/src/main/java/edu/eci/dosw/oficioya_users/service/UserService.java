@@ -181,6 +181,15 @@ public class UserService {
                 .toList();
     }
 
+    /** RF-11 */
+    @Transactional(readOnly = true)
+    public UserResponseDTO findByEmail(String email) {
+        return userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
+                .map(userEntityMapper::toModel)
+                .map(userMapper::toAdmin)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + email));
+    }
+
     /** RF-08 */
     @Transactional(readOnly = true)
     public UserResponseDTO findById(UUID id) {

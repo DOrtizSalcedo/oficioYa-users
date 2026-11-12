@@ -107,4 +107,13 @@ class UserRepositoryTest {
 
         assertThrows(DataIntegrityViolationException.class, () -> newUser("ana@mail.com", AccountStatus.ACTIVE));
     }
+
+    @Test
+    void findByEmailReturnsAccountRegardlessOfStatus() {
+        UserEntity inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
+
+        assertThat(userRepository.findByEmail("inactivo@mail.com")).get()
+                .extracting(UserEntity::getId).isEqualTo(inactive.getId());
+        assertThat(userRepository.findByEmail("otro@mail.com")).isEmpty();
+    }
 }
