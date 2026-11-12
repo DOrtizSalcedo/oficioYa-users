@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ee0803ca-c05c-4f6f-a222-5246d6f863fc" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oficioYa-users/docs/requirements/data_user_requirements.md" beforeDir="false" afterPath="$PROJECT_DIR$/oficioYa-users/docs/requirements/data_user_requirements.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oficioYa-users/src/main/java/edu/eci/dosw/oficioya_users/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/oficioYa-users/src/main/java/edu/eci/dosw/oficioya_users/security/SecurityConfig.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,7 +49,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "Merging develop",
+    "git-widget-placeholder": "feature/worker-integration",
     "kotlin-language-version-configured": "true",
     "node.js.detected.package.jshint": "true",
     "node.js.selected.package.jshint": "",
