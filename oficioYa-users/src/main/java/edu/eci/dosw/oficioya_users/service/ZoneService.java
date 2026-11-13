@@ -5,12 +5,14 @@ import edu.eci.dosw.oficioya_users.entity.ZoneEntity;
 import edu.eci.dosw.oficioya_users.exception.BadRequestException;
 import edu.eci.dosw.oficioya_users.repository.ZoneRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ZoneService {
@@ -19,9 +21,11 @@ public class ZoneService {
 
     private final ZoneRepository zoneRepository;
 
-    /** Ctálogo, ordenado por id*/
+    /** Catálogo, ordenado por id */
     public List<ZoneDTO> findAll() {
-        return zoneRepository.findAllByOrderByIdAsc().stream().map(ZoneService::toDTO).toList();
+        List<ZoneDTO> zones = zoneRepository.findAllByOrderByIdAsc().stream().map(ZoneService::toDTO).toList();
+        log.info("Catálogo de zonas consultado: {} zonas", zones.size());
+        return zones;
     }
 
     /**
@@ -30,9 +34,12 @@ public class ZoneService {
     public List<ZoneDTO> findByIds(List<Long> ids) {
         Set<Long> unique = new LinkedHashSet<>(ids);
         if (unique.size() > MAX_IDS) {
+            log.warn("Consulta de zonas rechazada: {} ids (máximo {})", unique.size(), MAX_IDS);
             throw new BadRequestException("Se pueden consultar máximo " + MAX_IDS + " zonas por petición");
         }
-        return zoneRepository.findByIdInOrderByIdAsc(unique).stream().map(ZoneService::toDTO).toList();
+        List<ZoneDTO> zones = zoneRepository.findByIdInOrderByIdAsc(unique).stream().map(ZoneService::toDTO).toList();
+        log.info("Zonas consultadas por ids: {} pedidas, {} encontradas", unique.size(), zones.size());
+        return zones;
     }
 
     private static ZoneDTO toDTO(ZoneEntity zone) {
