@@ -104,6 +104,14 @@ class UserAcceptanceTest {
         }
 
         @Test
+        @DisplayName("Dado un correo nuevo, cuando me registro solo como trabajador, entonces la cuenta tiene únicamente ese rol")
+        void registersOnlyAsWorker() throws Exception {
+            mockMvc.perform(registerRequest(registerBody("Rosa", "rosa.rf01@mail.com", "TRABAJADOR")))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.roles", containsInAnyOrder("TRABAJADOR")));
+        }
+
+        @Test
         @DisplayName("Dado un correo ya registrado, cuando intento registrarme con él, entonces recibo 409")
         void rejectsDuplicatedEmail() throws Exception {
             register("Ana", "repetido.rf01@mail.com", "CONTRATANTE");
@@ -159,6 +167,16 @@ class UserAcceptanceTest {
             mockMvc.perform(post(ME + "/roles/TRABAJADOR").header(AUTH, token(id, "CONTRATANTE")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.roles", containsInAnyOrder("CONTRATANTE", "TRABAJADOR")));
+        }
+
+        @Test
+        @DisplayName("Dado un trabajador activo, cuando agrega el rol contratante, entonces su cuenta tiene ambos roles")
+        void workerAddsContractorRole() throws Exception {
+            UUID id = register("Iván", "ivan.rf02@mail.com", "TRABAJADOR");
+
+            mockMvc.perform(post(ME + "/roles/CONTRATANTE").header(AUTH, token(id, "TRABAJADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.roles", containsInAnyOrder("TRABAJADOR", "CONTRATANTE")));
         }
 
         @Test
