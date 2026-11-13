@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -380,6 +381,30 @@ class UserServiceTest {
     }
 
     @Test
+    void findPublicByIdsReturnsPublicDataOfActiveUsers() {
+        UserEntity user = user(AccountStatus.ACTIVE, "TRABAJADOR");
+        when(userRepository.findByIdInAndAccountStatus(Set.of(user.getId()), AccountStatus.ACTIVE))
+                .thenReturn(List.of(user));
+
+        List<UserResponseDTO> result = userService.findPublicByIds(List.of(user.getId(), user.getId()));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo(user.getId());
+        assertThat(result.get(0).getName()).isEqualTo("Ana Pérez");
+        assertThat(result.get(0).getRoles()).containsExactly("TRABAJADOR");
+        assertThat(result.get(0).getEmail()).isNull();
+        assertThat(result.get(0).getPhones()).isNull();
+    }
+
+    @Test
+    void findPublicByIdsRejectsMoreThanFiftyIds() {
+        List<UUID> ids = Stream.generate(UUID::randomUUID).limit(51).toList();
+
+        assertStatus(() -> userService.findPublicByIds(ids), HttpStatus.BAD_REQUEST);
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
     void adminSeesFullData() {
         UserEntity user = user(AccountStatus.INACTIVE, "TRABAJADOR");
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -459,5 +484,24 @@ class UserServiceTest {
         when(userRepository.existsById(id)).thenReturn(false);
         assertStatus(() -> userService.deleteById(id), HttpStatus.NOT_FOUND);
         verify(userRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void findByEmailReturnsFullAccountIgnoringCaseAndSpaces() {
+        UserEntity user = user(AccountStatus.INACTIVE, "TRABAJADOR");
+        when(userRepository.findByEmail("ana@mail.com")).thenReturn(Optional.of(user));
+
+        UserResponseDTO found = userService.findByEmail("  Ana@Mail.com ");
+
+        assertThat(found.getId()).isEqualTo(user.getId());
+        assertThat(found.getEmail()).isEqualTo("ana@mail.com");
+        assertThat(found.getAccountStatus()).isEqualTo(AccountStatus.INACTIVE);
+        assertThat(found.getRoles()).containsExactly("TRABAJADOR");
+    }
+
+    @Test
+    void findByEmailFailsWhenMissingOrBlank() {
+        assertStatus(() -> userService.findByEmail("nadie@mail.com"), HttpStatus.NOT_FOUND);
+        assertStatus(() -> userService.findByEmail("  "), HttpStatus.NOT_FOUND);
     }
 }

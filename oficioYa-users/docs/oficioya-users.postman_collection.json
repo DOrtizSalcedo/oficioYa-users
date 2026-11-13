@@ -375,6 +375,50 @@
           "response": []
         },
         {
+          "name": "7.1 Consultar varios usuarios (rol SERVICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Solo la cuenta que existe', () => pm.expect(res.length).to.eql(1));",
+                  "pm.test('Sin correo ni teléfonos', () => { pm.expect(res[0].email).to.be.undefined; pm.expect(res[0].phones).to.be.undefined; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?ids={{userId}},99999999-9999-9999-9999-999999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{userId}},99999999-9999-9999-9999-999999999999"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "8. Error: usuario no existe",
           "event": [
             {
@@ -519,6 +563,177 @@
                 "admin",
                 "users",
                 "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11.1 Identidad consulta la cuenta por correo (rol SERVICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Es la cuenta registrada', () => pm.expect(res.id).to.eql(pm.collectionVariables.get('userId')));",
+                  "pm.test('Correo sin ocultar', () => pm.expect(res.email).to.eql(pm.collectionVariables.get('email')));",
+                  "pm.test('Trae el estado y los roles', () => { pm.expect(res.accountStatus).to.eql('ACTIVE'); pm.expect(res.roles).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/by-email?email={{email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "by-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11.2 Identidad consulta la cuenta por id (rol SERVICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Es la cuenta registrada', () => pm.expect(res.id).to.eql(pm.collectionVariables.get('userId')));",
+                  "pm.test('Correo sin ocultar', () => pm.expect(res.email).to.eql(pm.collectionVariables.get('email')));",
+                  "pm.test('Trae el estado y los roles', () => { pm.expect(res.accountStatus).to.eql('ACTIVE'); pm.expect(res.roles).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}",
+                "account"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11.3 Error: consultar la cuenta sin rol SERVICE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/by-email?email={{email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "by-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11.4 Error: correo que no existe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{serviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/by-email?email=nadie@mail.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "by-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "nadie@mail.com"
+                }
               ]
             }
           },
@@ -1422,6 +1637,118 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Zonas (catálogo)",
+      "item": [
+        {
+          "name": "24. Consultar todas las zonas (sin token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 sin token', () => pm.response.to.have.status(200));",
+                  "const zones = pm.response.json();",
+                  "pm.test('Trae los 25 barrios', () => pm.expect(zones).to.have.lengthOf(25));",
+                  "pm.test('Cada zona tiene id, name y locality', () => zones.forEach(z => pm.expect(z).to.have.all.keys('id', 'name', 'locality')));",
+                  "pm.test('Ordenadas por id', () => pm.expect(zones.map(z => z.id)).to.eql(zones.map(z => z.id).sort((a, b) => a - b)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "25. Consultar zonas por ids",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Solo las que existen, sin repetidas', () => pm.expect(pm.response.json().map(z => z.id)).to.eql([2, 13]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/zones?ids=13,2,2,999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "13,2,2,999"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "26. Error: id que no es número",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/zones?ids=uno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "zones"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "uno"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "event": [
@@ -1436,7 +1763,7 @@
           "function jwt(sub, role) {",
           "    const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));",
           "    const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({",
-          "        sub: sub, roles: role, exp: Math.floor(Date.now() / 1000) + 3600",
+          "        sub: sub, roles: [role], exp: Math.floor(Date.now() / 1000) + 3600",
           "    })));",
           "    const signature = b64url(CryptoJS.HmacSHA256(header + '.' + payload, CryptoJS.enc.Base64.parse(pm.collectionVariables.get('jwtSecret'))));",
           "    return header + '.' + payload + '.' + signature;",

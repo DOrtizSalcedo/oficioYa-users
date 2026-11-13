@@ -13,8 +13,8 @@ mvn test -Dtest=UserAcceptanceTest
 ## Evidencias
 
 Además de las pruebas automatizadas, la [colección de Postman](../oficioya-users.postman_collection.json) recorre los mismos
-requerimientos con 32 peticiones, incluidos los endpoints de teléfonos y los que usa Identity (rol `SERVICE`).
-Ejecutada completa (*Run collection*), pasan las 64 pruebas:
+requerimientos con 40 peticiones, incluidos los endpoints de teléfonos, los que usa Identity (rol `SERVICE`) y el catálogo de zonas.
+Ejecutada completa (*Run collection*), pasan las 87 pruebas:
 
 ![Ejecución de la colección de Postman](../evidencias/postman-run.png)
 
@@ -28,21 +28,23 @@ Documentación de los endpoints en Swagger (`/swagger-ui.html`):
 |---|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
 | 1 | Un correo que no está registrado                  | Me registro con nombre, un teléfono principal y el rol CONTRATANTE                                                                          | Recibo 201 y la cuenta queda Activa con ese rol y el correo enmascarado |
 | 2 | Un correo que no está registrado                  | Me registro como TRABAJADOR y CONTRATANTE                                                                                                   | La cuenta tiene ambos roles                                             |
-| 3 | Un correo ya registrado (sin importar mayúsculas) | Intento registrarme con él                                                                                                                  | Recibo 409                                                              |
-| 4 | —                                                 | Intento registrarme con el rol ADMIN                                                                                                        | Recibo 400                                                              |
-| 5 | —                                                 | Me registro con dos teléfonos principales                                                                                                   | Recibo 400                                                              |
-| 6 | —                                                 | Me registro con más de tres teléfonos o con datos inválidos (por ejemplo, un teléfono que no es un celular de 10 dígitos que empieza por 3) | Recibo 400                                                              |
-| 7 | —                                                 | Intento registrarme sin token o con un token que no es SERVICE                                                                              | Recibo 401 o 403                                                        |
-| 8 | Un perfil creado cuyo registro falló en Identity  | Identity pide eliminarlo (`DELETE /api/v1/users/{id}`) con token SERVICE                                                                    | Recibo 204 y el perfil deja de existir; con otro rol recibo 403         |
+| 3 | Un correo que no está registrado                  | Me registro solo como TRABAJADOR                                                                                                            | La cuenta tiene únicamente ese rol                                      |
+| 4 | Un correo ya registrado (sin importar mayúsculas) | Intento registrarme con él                                                                                                                  | Recibo 409                                                              |
+| 5 | —                                                 | Intento registrarme con el rol ADMIN                                                                                                        | Recibo 400                                                              |
+| 6 | —                                                 | Me registro con dos teléfonos principales                                                                                                   | Recibo 400                                                              |
+| 7 | —                                                 | Me registro con más de tres teléfonos o con datos inválidos (por ejemplo, un teléfono que no es un celular de 10 dígitos que empieza por 3) | Recibo 400                                                              |
+| 8 | —                                                 | Intento registrarme sin token o con un token que no es SERVICE                                                                              | Recibo 401 o 403                                                        |
+| 9 | Un perfil creado cuyo registro falló en Identity  | Identity pide eliminarlo (`DELETE /api/v1/users/{id}`) con token SERVICE                                                                    | Recibo 204 y el perfil deja de existir; con otro rol recibo 403         |
 
 ## RF-02 Agregar rol (`POST /api/v1/users/me/roles/{role}`)
 
 | # | Dado | Cuando | Entonces |
 |---|------|--------|----------|
 | 1 | Un contratante activo | Agrega el rol TRABAJADOR | Su cuenta tiene ambos roles, sin crear otra cuenta |
-| 2 | Un usuario que ya tiene el rol | Lo vuelve a agregar | Recibe 409 |
-| 3 | Un usuario activo | Intenta agregarse el rol ADMIN | Recibe 400 |
-| 4 | El administrador | Intenta agregarse un rol | Recibe 403 |
+| 2 | Un trabajador activo | Agrega el rol CONTRATANTE | Su cuenta tiene ambos roles, sin crear otra cuenta |
+| 3 | Un usuario que ya tiene el rol | Lo vuelve a agregar | Recibe 409 |
+| 4 | Un usuario activo | Intenta agregarse el rol ADMIN | Recibe 400 |
+| 5 | El administrador | Intenta agregarse un rol | Recibe 403 |
 
 ## RF-03 Consultar perfil propio (`GET /api/v1/users/me`)
 
@@ -109,3 +111,31 @@ y [`UserControllerTest`](../../src/test/java/edu/eci/dosw/oficioya_users/control
 | 2 | Cuentas registradas | El admin lista los usuarios | Aparecen las cuentas registradas |
 | 3 | Un id que no existe | El admin lo consulta | Recibe 404 |
 | 4 | Un usuario que no es admin | Consulta la información completa | Recibe 403 |
+
+## RF-09 Consultar el catálogo de zonas (`GET /api/v1/zones`)
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 1 | — | Consulto las zonas sin token | Recibo 200 con los 25 barrios (id, nombre y localidad) ordenados por id |
+| 2 | Unos ids, algunos repetidos o inexistentes (`?ids=13,2,2,999`) | Los consulto | Recibo solo las zonas que existen, sin repetidas y ordenadas por id |
+| 3 | — | Envío un id que no es número | Recibo 400 |
+| 4 | Más de 50 ids distintos | Los consulto | Recibo 400 (automatizado en `ZoneServiceTest` y `ZoneControllerTest`) |
+
+## RF-10 Consultar varios usuarios a la vez (`GET /api/v1/users?ids=…`)
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 1 | Cuentas activas | Las consulto por sus ids con cualquier rol (incluido `SERVICE`) | Recibo sus datos públicos |
+| 2 | Una cuenta inactiva o un id que no existe | Lo incluyo en los ids | No aparece en la respuesta |
+| 3 | Más de 50 ids | Los consulto | Recibo 400 |
+| 4 | — | Consulto sin token | Recibo 401 |
+
+## RF-11 Consultar la cuenta de un usuario (`GET /api/v1/users/by-email?email=…` y `GET /api/v1/users/{id}/account`)
+
+| # | Dado | Cuando | Entonces |
+|---|------|--------|----------|
+| 1 | Una cuenta registrada (Activa o Inactiva) | Identity la consulta por correo (sin importar mayúsculas ni espacios) o por id con token `SERVICE` | Recibe sus datos completos: id, nombre, correo, teléfonos, roles y estado |
+| 2 | Un correo o id que no existe | Lo consulta | Recibe 404 |
+| 3 | — | Consulta con un token que no es `SERVICE` o sin token | Recibe 403 o 401 |
+
+Automatizado en `UserServiceTest`, `UserControllerTest` y `UserRepositoryTest`.

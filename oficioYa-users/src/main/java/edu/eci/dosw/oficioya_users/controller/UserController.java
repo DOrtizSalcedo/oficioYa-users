@@ -41,6 +41,12 @@ public class UserController {
         userService.deleteById(id);
     }
 
+    @GetMapping("/users")
+    @Operation(summary = "Consultar varios usuarios", description = "RF-10. Datos públicos de las cuentas activas (máximo 50 ids)")
+    public List<UserResponseDTO> findByIds(@RequestParam(defaultValue = "") List<UUID> ids) {
+        return userService.findPublicByIds(ids);
+    }
+
     @GetMapping("/users/me")
     @Operation(summary = "Consultar perfil propio", description = "RF-03. Correo y teléfono enmascarados")
     public UserResponseDTO getOwnProfile(@AuthenticationPrincipal UUID userId) {
@@ -115,5 +121,17 @@ public class UserController {
     public UserResponseDTO activate(@AuthenticationPrincipal UUID adminId, @PathVariable UUID id,
                                     @Valid @RequestBody StatusChangeDTO request) {
         return userService.changeStatus(adminId, id, AccountStatus.ACTIVE, request.getReason());
+    }
+
+    @GetMapping("/users/by-email")
+    @Operation(summary = "Consultar cuenta por correo", description = "RF-11. Solo el rol SERVICE")
+    public UserResponseDTO findByEmail(@RequestParam(defaultValue = "") String email) {
+        return userService.findByEmail(email);
+    }
+
+    @GetMapping("/users/{id}/account")
+    @Operation(summary = "Consultar cuenta por id", description = "RF-11. Solo el rol SERVICE")
+    public UserResponseDTO findAccount(@PathVariable UUID id) {
+        return userService.findById(id);
     }
 }

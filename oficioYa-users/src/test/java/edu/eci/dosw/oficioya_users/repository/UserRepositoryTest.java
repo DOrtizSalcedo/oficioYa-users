@@ -13,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -73,6 +74,17 @@ class UserRepositoryTest {
     }
 
     @Test
+    void findByIdInAndAccountStatusReturnsOnlyActiveUsers() {
+        UserEntity active = newUser("activo@mail.com", AccountStatus.ACTIVE);
+        UserEntity inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
+
+        List<UserEntity> found = userRepository.findByIdInAndAccountStatus(
+                List.of(active.getId(), inactive.getId(), UUID.randomUUID()), AccountStatus.ACTIVE);
+
+        assertThat(found).extracting(UserEntity::getId).containsExactly(active.getId());
+    }
+
+    @Test
     void replacingPhonesRemovesOldOnes() {
         UserEntity saved = newUser("ana@mail.com", AccountStatus.ACTIVE);
         UserEntity found = userRepository.findById(saved.getId()).orElseThrow();
@@ -94,5 +106,14 @@ class UserRepositoryTest {
         newUser("ana@mail.com", AccountStatus.ACTIVE);
 
         assertThrows(DataIntegrityViolationException.class, () -> newUser("ana@mail.com", AccountStatus.ACTIVE));
+    }
+
+    @Test
+    void findByEmailReturnsAccountRegardlessOfStatus() {
+        UserEntity inactive = newUser("inactivo@mail.com", AccountStatus.INACTIVE);
+
+        assertThat(userRepository.findByEmail("inactivo@mail.com")).get()
+                .extracting(UserEntity::getId).isEqualTo(inactive.getId());
+        assertThat(userRepository.findByEmail("otro@mail.com")).isEmpty();
     }
 }

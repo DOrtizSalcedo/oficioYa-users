@@ -8,7 +8,6 @@ import edu.eci.dosw.oficioya_users.enums.RoleName;
 import edu.eci.dosw.oficioya_users.exception.ConflictException;
 import edu.eci.dosw.oficioya_users.exception.ResourceNotFoundException;
 import io.jsonwebtoken.io.Decoders;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import edu.eci.dosw.oficioya_users.security.SecurityConfig;
 import edu.eci.dosw.oficioya_users.service.UserService;
 import io.jsonwebtoken.Jwts;
@@ -22,7 +21,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -55,17 +53,17 @@ class UserControllerTest {
 
     private final UUID userId = UUID.randomUUID();
 
-    private static String bearer(String subject, String role, String secret, long ttlMillis) {
+    private static String bearer(String subject, List<String> roles, String secret, long ttlMillis) {
         return "Bearer " + Jwts.builder()
                 .subject(subject)
-                .claim("roles", role)
+                .claim("roles", roles)
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
                 .compact();
     }
 
-    private String token(String role) {
-        return bearer(userId.toString(), role, SECRET, 60_000);
+    private String token(String... roles) {
+        return bearer(userId.toString(),List.of(roles), SECRET, 60_000);
     }
 
     private static UserResponseDTO response(String name) {
@@ -110,18 +108,18 @@ class UserControllerTest {
     void invalidTokensReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer token.invalido"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), "ADMIN", SECRET, -60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer(userId.toString(), List.of("ADMIN"), SECRET, -60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me")
-                        .header(AUTH, bearer(userId.toString(), "ADMIN", "rxl3eEuJLIOl0IYbwSy6RvQbtxX5ZahEsooK5QPmol0=", 60_000)))
+                        .header(AUTH, bearer(userId.toString(), List.of("ADMIN"), "rxl3eEuJLIOl0IYbwSy6RvQbtxX5ZahEsooK5QPmol0=", 60_000)))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", "ADMIN", SECRET, 60_000)))
+        mockMvc.perform(get("/api/v1/users/me").header(AUTH, bearer("no-es-uuid", List.of("ADMIN"), SECRET, 60_000)))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Basic dXNlcjpwYXNz"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/users/me").header(AUTH, "Bearer " + Jwts.builder()
                         .subject(userId.toString())
-                        .claim("roles", List.of("ADMIN"))
+                        .claim("roles","ADMIN")
                         .expiration(new Date(System.currentTimeMillis() + 60_000))
                         .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
                         .compact()))
@@ -130,10 +128,65 @@ class UserControllerTest {
     }
 
     @Test
+    void tokenWithNonUuidSubjectReturns401() throws Exception {
+        String token = bearer("123", List.of("CONTRATANTE"),  SECRET, 60_000);
+
+        mockMvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void accountQueriesAllowServiceRole() throws Exception {
+        UUID id = UUID.randomUUID();
+        UserResponseDTO dto = response("Ana");
+        dto.setEmail("ana@mail.com");
+        dto.setAccountStatus(AccountStatus.INACTIVE);
+        when(userService.findByEmail("ana@mail.com")).thenReturn(dto);
+        when(userService.findById(id)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com").header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("ana@mail.com"))
+                .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
+        mockMvc.perform(get("/api/v1/users/{id}/account", id).header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountStatus").value("INACTIVE"));
+    }
+
+    @Test
+    void accountQueriesAreOnlyForService() throws Exception {
+        UUID id = UUID.randomUUID();
+        for (String role : List.of("ADMIN", "CONTRATANTE", "TRABAJADOR")) {
+            mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com").header(AUTH, token(role)))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/v1/users/{id}/account", id).header(AUTH, token(role)))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "ana@mail.com"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void accountQueryOfMissingUserReturns404() throws Exception {
+        when(userService.findByEmail("nadie@mail.com")).thenThrow(new ResourceNotFoundException("Usuario no encontrado"));
+
+        mockMvc.perform(get("/api/v1/users/by-email").param("email", "nadie@mail.com").header(AUTH, token("SERVICE")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void nonAdminCannotUseAdminEndpoints() throws Exception {
         mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token("TRABAJADOR")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token(null)))
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, token()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/users").header(AUTH, "Bearer " + Jwts.builder()
+                        .subject(userId.toString())
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                        .compact()))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(userService);
     }
@@ -181,6 +234,29 @@ class UserControllerTest {
         mockMvc.perform(get("/api/v1/users/{id}", otherId).header(AUTH, token("CONTRATANTE")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Luis"));
+    }
+
+    @Test
+    void usersByIdsAllowsServiceRole() throws Exception {
+        UUID otherId = UUID.randomUUID();
+        when(userService.findPublicByIds(List.of(otherId))).thenReturn(List.of(response("Luis")));
+
+        mockMvc.perform(get("/api/v1/users").param("ids", otherId.toString()).header(AUTH, token("SERVICE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Luis"));
+    }
+
+    @Test
+    void usersByIdsWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(get("/api/v1/users").param("ids", UUID.randomUUID().toString()))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void usersByIdsWithInvalidIdReturns400() throws Exception {
+        mockMvc.perform(get("/api/v1/users").param("ids", "uno").header(AUTH, token("SERVICE")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
